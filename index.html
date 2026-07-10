@@ -230,6 +230,31 @@
   .checklist li { margin: 4px 0; }
   .law-ref { color: var(--ink-soft); font-size: .8rem; }
 
+  /* ---------- favorite / ban ---------- */
+  .kind-toggle { display: flex; gap: 10px; margin: 12px 0; }
+  .kind-toggle button {
+    flex: 1; font: inherit; font-variant: small-caps; letter-spacing: .05em; font-size: 1.1rem;
+    padding: 10px; border-radius: 10px; border: 2px solid var(--ink-soft);
+    background: var(--paper); color: var(--ink-soft); cursor: pointer;
+  }
+  .kind-toggle button.fav[aria-pressed="true"] { border-color: var(--moss); color: var(--moss); font-weight: 700; }
+  .kind-toggle button.ban[aria-pressed="true"] { border-color: var(--danger); color: var(--danger); font-weight: 700; }
+  .card.selected-ban { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger), 0 3px 8px rgba(58,46,28,.3); }
+  .card.selected-ban::after {
+    content: "✖"; position: absolute; bottom: 6px; right: 8px;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--danger); color: var(--paper);
+    font-size: 1.1rem; font-weight: 700; line-height: 30px;
+  }
+  .reveal-log { list-style: none; margin: 10px 0; padding: 0; display: grid; gap: 8px; }
+  .reveal-log li {
+    background: var(--paper); border: 2px solid var(--ink-soft); border-radius: 10px;
+    padding: 8px 12px; font-size: .98rem;
+  }
+  .reveal-log li.ban-line { border-color: var(--danger); }
+  .reveal-log li.fav-line { border-color: var(--moss); }
+  .reveal-log li.void-line { border-style: dashed; }
+
   .placeholder-box {
     border: 2px dashed var(--ink-soft); border-radius: 12px; padding: 24px; text-align: center;
     color: var(--ink-soft); font-style: italic; margin-top: 20px;
@@ -249,6 +274,7 @@
     <button role="tab" aria-selected="true" data-mode="simple">Simple Setup</button>
     <button role="tab" aria-selected="false" data-mode="draft">Advanced Draft</button>
     <button role="tab" aria-selected="false" data-mode="hand">Hand Draft</button>
+    <button role="tab" aria-selected="false" data-mode="fav">Favorite &amp; Ban</button>
   </nav>
 
   <div class="stepper">
@@ -362,6 +388,7 @@
     <div id="hand-pick" class="hidden">
       <div class="picker-banner" id="hand-banner"></div>
       <div class="grid" id="hand-grid"></div>
+      <p class="note" id="hand-hidden-note" style="color:var(--danger)"></p>
       <p class="note">Pick one — it becomes public and you set it up right away. The rest of your hand stays
         secret until the end.</p>
     </div>
@@ -378,6 +405,77 @@
       <div class="btn-row">
         <button class="btn secondary" id="hand-undo2">Undo last pick</button>
         <button class="btn secondary" id="hand-reset2">New deal</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FAVORITE & BAN (mode 4) ============ -->
+  <section id="mode-fav" class="hidden">
+
+    <div id="fav-setup">
+      <h2>Players &amp; Seats</h2>
+      <p class="note">Names are optional. Seating order and first player are randomized when you start.</p>
+      <div class="players-list" id="fav-players"></div>
+
+      <h2>How It Works</h2>
+      <p class="note">In secret, each player either <b>♥ favorites</b> one faction (it’s locked to them) or
+        <b>✖ bans</b> one (nobody can play it). Then everything is revealed: bans trump favorites, and if two
+        players favorited the same faction it stays in the pool and both choose again — new bans allowed.
+        Repeat until settled. Players who banned get a random faction from what survives, rolled so the table
+        makes its reach total with at least one militant. The Second Vagabond sits out, and the Vagabond and
+        Knaves can never both end up in play (A.8.1).</p>
+      <label class="note" style="display:block">
+        <input type="checkbox" id="fav-adventurous">
+        Adventurous group — allow any mix that reaches 17+
+      </label>
+      <div class="btn-row">
+        <button class="btn" id="fav-start-btn">Shuffle seats &amp; start</button>
+      </div>
+    </div>
+
+    <div id="fav-pass" class="hidden">
+      <h2>Turn Order</h2>
+      <ul class="order-list" id="fav-order"></ul>
+      <div id="fav-public"></div>
+      <div class="picker-banner">Pass the device to <b id="fav-pass-name"></b> — only they should look.</div>
+      <div class="btn-row">
+        <button class="btn" id="fav-show-btn">Make my choice</button>
+        <button class="btn secondary" id="fav-reset">Start over</button>
+      </div>
+    </div>
+
+    <div id="fav-choose" class="hidden">
+      <div class="picker-banner" id="fav-banner"></div>
+      <div class="kind-toggle">
+        <button class="fav" id="fav-kind-fav" aria-pressed="true">♥ Favorite — I want to play this</button>
+        <button class="ban" id="fav-kind-ban" aria-pressed="false">✖ Ban — nobody plays this</button>
+      </div>
+      <div class="grid" id="fav-grid"></div>
+      <div class="btn-row">
+        <button class="btn" id="fav-confirm" disabled>Lock in</button>
+      </div>
+    </div>
+
+    <div id="fav-reveal" class="hidden">
+      <h2 id="fav-reveal-title">The Reveal</h2>
+      <ul class="reveal-log" id="fav-log"></ul>
+      <div class="btn-row">
+        <button class="btn" id="fav-continue">Continue</button>
+        <button class="btn secondary" id="fav-reset2">Start over</button>
+      </div>
+    </div>
+
+    <div id="fav-done" class="hidden">
+      <h2>The Woodland is Set</h2>
+      <p id="fav-total"></p>
+      <ul class="summary-list" id="fav-summary"></ul>
+      <h2>Before You Begin</h2>
+      <ul class="checklist">
+        <li>Standard setup: each player draws <b>three</b> cards <span class="law-ref">(two players: remove the four dominance cards first)</span></li>
+        <li>Using the Advanced Setup board steps instead? Draw <b>five</b>, and after setup keep three <span class="law-ref">(A.7, A.10)</span></li>
+      </ul>
+      <div class="btn-row">
+        <button class="btn secondary" id="fav-reset3">New game</button>
       </div>
     </div>
   </section>
@@ -474,7 +572,7 @@ document.querySelectorAll("nav [role=tab]").forEach(btn => {
     mode = btn.dataset.mode;
     document.querySelectorAll("nav [role=tab]").forEach(b =>
       b.setAttribute("aria-selected", b === btn ? "true" : "false"));
-    for (const m of ["simple", "draft", "hand"])
+    for (const m of ["simple", "draft", "hand", "fav"])
       $(`#mode-${m}`).classList.toggle("hidden", m !== mode);
     $("#tracker").classList.toggle("hidden", mode !== "simple");
     document.body.style.paddingBottom = mode === "simple" ? "" : "0";
@@ -492,6 +590,7 @@ function setCount(v) {
   renderDraftSetup();
   if (typeof hand !== "undefined") {
     if (hand.phase !== "setup") resetHand(); else renderHand();
+    if (fav.phase !== "setup") resetFav(); else renderFav();
   }
 }
 $("#pc-minus").addEventListener("click", () => setCount(playerCount - 1));
@@ -821,15 +920,31 @@ function draftSolvable(hands, sum, hasMilitant, target) {
   return false;
 }
 
-function handBlockReason(candidateId) {
-  const remaining = hand.pickQueue.slice(hand.picks.length + 1).map(si => hand.hands[si]);
-  const sum = hand.picks.reduce((s, p) => s + byId[p.factionId].reach, 0) + byId[candidateId].reach;
-  const militant = byId[candidateId].type === "militant" ||
-    hand.picks.some(p => byId[p.factionId].type === "militant");
-  const target = effTarget();
-  if (draftSolvable(remaining, sum, militant, target)) return null;
-  if (draftSolvable(remaining, sum, true, target)) return "Someone must still play a militant";
-  return `The table couldn’t reach ${target} reach`;
+/* Cards the player at queue position qi can pick without stranding the table. */
+function legalIds(handsQ, qi, sum, mil, target) {
+  const rest = handsQ.slice(qi + 1);
+  return handsQ[qi].filter(id => {
+    const f = byId[id];
+    return draftSolvable(rest, sum + f.reach, mil || f.type === "militant", target);
+  });
+}
+
+/* True if, from queue position qi on, every player is guaranteed at least two
+   legal cards no matter what the players before them picked. */
+function strongOk(handsQ, qi, sum, mil, target, memo) {
+  if (qi >= handsQ.length) return true;
+  const key = qi + "|" + sum + "|" + mil;
+  if (memo.has(key)) return memo.get(key);
+  const legal = legalIds(handsQ, qi, sum, mil, target);
+  let ok = legal.length >= 2;
+  for (const id of ok ? legal : []) {
+    const f = byId[id];
+    if (!strongOk(handsQ, qi + 1, sum + f.reach, mil || f.type === "militant", target, memo)) {
+      ok = false; break;
+    }
+  }
+  memo.set(key, ok);
+  return ok;
 }
 
 function dealHands() {
@@ -837,19 +952,26 @@ function dealHands() {
   const drop = Math.random() < 0.5 ? "vagabond" : "knaves"; // never both in one game (A.8.1)
   const deck0 = FACTIONS.filter(f => f.id !== "vagabond2" && f.id !== drop);
   const target = effTarget();
+  // First hunt for a deal where every player is guaranteed a real choice
+  // (two or more legal cards) whatever happens; settle for merely solvable.
+  let fallback = null;
   for (let t = 0; t < 800; t++) {
     const deck = shuffleArr(deck0.slice());
     const hands = Array.from({ length: playerCount }, (_, i) =>
       deck.slice(i * K, (i + 1) * K).map(f => f.id));
-    if (draftSolvable(hands, 0, false, target)) {
-      hand.hands = hands;
-      hand.seats = shuffleArr(playerNames().slice());
-      hand.pickQueue = Array.from({ length: playerCount }, (_, i) => playerCount - 1 - i);
-      hand.picks = [];
-      hand.phase = "pass";
-      renderHand();
-      return;
-    }
+    if (!draftSolvable(hands, 0, false, target)) continue;
+    const handsQ = hands.slice().reverse(); // pick order: last seat first
+    if (strongOk(handsQ, 0, 0, false, target, new Map())) { fallback = hands; break; }
+    fallback = fallback || hands;
+  }
+  if (fallback) {
+    hand.hands = fallback;
+    hand.seats = shuffleArr(playerNames().slice());
+    hand.pickQueue = Array.from({ length: playerCount }, (_, i) => playerCount - 1 - i);
+    hand.picks = [];
+    hand.phase = "pass";
+    renderHand();
+    return;
   }
   $("#hand-deal-error").textContent =
     "Couldn’t deal hands that reach the total — try the adventurous toggle.";
@@ -889,17 +1011,27 @@ function renderHand() {
   }
 
   if (hand.phase === "pick") {
-    const seat = hand.pickQueue[hand.picks.length];
+    const qi = hand.picks.length;
+    const seat = hand.pickQueue[qi];
+    const handsQ = hand.pickQueue.map(si => hand.hands[si]);
+    const sum = hand.picks.reduce((s, p) => s + byId[p.factionId].reach, 0);
+    const mil = hand.picks.some(p => byId[p.factionId].type === "militant");
+    const target = effTarget();
+    const legal = legalIds(handsQ, qi, sum, mil, target);
+    // Prefer picks that leave every later player two or more legal cards.
+    const strong = legal.filter(id => {
+      const f = byId[id];
+      return strongOk(handsQ, qi + 1, sum + f.reach, mil || f.type === "militant", target, new Map());
+    });
+    const shown = strong.length ? strong : legal;
+
     $("#hand-banner").innerHTML = `<b>${hand.seats[seat]}</b> — pick one faction.`;
     const grid = $("#hand-grid");
     grid.innerHTML = "";
-    for (const id of hand.hands[seat]) {
+    for (const id of shown) {
       const f = byId[id];
-      const reason = handBlockReason(id);
-      const wrap = document.createElement("div");
       const card = document.createElement("button");
-      card.className = "card" + (reason ? " dimmed" : "");
-      card.disabled = !!reason;
+      card.className = "card";
       card.innerHTML = `<img src="${imgSrc(f)}" alt="${f.name} — ${f.type}">
         <span class="reach-badge" title="Reach">${f.reach}</span>`;
       card.addEventListener("click", () => {
@@ -907,15 +1039,12 @@ function renderHand() {
         hand.phase = hand.picks.length === playerCount ? "done" : "pass";
         renderHand();
       });
-      wrap.appendChild(card);
-      if (reason) {
-        const note = document.createElement("p");
-        note.className = "pool-note";
-        note.textContent = reason;
-        wrap.appendChild(note);
-      }
-      grid.appendChild(wrap);
+      grid.appendChild(card);
     }
+    const hiddenCount = hand.hands[seat].length - shown.length;
+    $("#hand-hidden-note").textContent = hiddenCount
+      ? `${hiddenCount === 1 ? "One dealt faction is" : hiddenCount + " dealt factions are"} hidden: picking ${hiddenCount === 1 ? "it" : "them"} would leave the table short on reach or militants, or leave a later player with no real choice. ${hiddenCount === 1 ? "It shows up" : "They show up"} in the reveal at the end.`
+      : "";
     return;
   }
 
@@ -972,22 +1101,333 @@ $("#hand-undo2").addEventListener("click", undoHand);
 $("#hand-reset").addEventListener("click", resetHand);
 $("#hand-reset2").addEventListener("click", resetHand);
 
+/* ================= FAVORITE & BAN MODE ================= */
+const fav = {
+  phase: "setup",   // setup | pass | choose | reveal | done
+  seats: [],        // names in turn order (index 0 = first player)
+  pool: [],         // faction ids still available
+  banned: [],       // { id, by } public
+  locked: [],       // { seatIndex, id } public
+  pending: [],      // seat indices choosing this round
+  choiceIdx: 0,     // which pending player is choosing now
+  choices: [],      // secret this round: { seatIndex, kind: "fav"|"ban", id }
+  round: 1,
+  assigned: [],     // final: { seatIndex, id, via: "fav"|"random" }
+  log: [],          // reveal lines for the current round
+  pickKind: "fav", pickId: null, // transient choose-screen state
+};
+
+const otherHalf = id => id === "vagabond" ? "knaves" : id === "knaves" ? "vagabond" : null;
+
+/* Can `slots` players still be served from `pool` so the table makes `target`
+   with a militant, never fielding both the Vagabond and the Knaves? */
+function favFeasible(poolIds, lockedSum, lockedMilitant, slots, target) {
+  if (slots < 0 || poolIds.length < slots) return false;
+  if (slots === 0) return lockedMilitant && lockedSum >= target;
+  const pool = poolIds.map(id => byId[id]);
+  const variants = pool.some(f => f.id === "vagabond") && pool.some(f => f.id === "knaves")
+    ? [pool.filter(f => f.id !== "vagabond"), pool.filter(f => f.id !== "knaves")]
+    : [pool];
+  for (const p of variants) {
+    if (p.length < slots) continue;
+    const sorted = p.slice().sort((a, b) => b.reach - a.reach);
+    const top = sorted.slice(0, slots);
+    let sum = lockedSum + top.reduce((s, f) => s + f.reach, 0);
+    if (!lockedMilitant && !top.some(f => f.type === "militant")) {
+      const swapIn = sorted.slice(slots).find(f => f.type === "militant");
+      if (!swapIn) continue;
+      sum = sum - top[top.length - 1].reach + swapIn.reach;
+    }
+    if (sum >= target) return true;
+  }
+  return false;
+}
+
+function favState() {
+  return {
+    lockedSum: fav.locked.reduce((s, l) => s + byId[l.id].reach, 0),
+    lockedMilitant: fav.locked.some(l => byId[l.id].type === "militant"),
+    slots: playerCount - fav.locked.length,
+  };
+}
+
+function favBlockReason(kind, id) {
+  const { lockedSum, lockedMilitant, slots } = favState();
+  const target = effTarget();
+  if (kind === "ban") {
+    return favFeasible(fav.pool.filter(p => p !== id), lockedSum, lockedMilitant, slots, target)
+      ? null : "Banning this would leave the table unable to reach the total";
+  }
+  const half = otherHalf(id);
+  const rest = fav.pool.filter(p => p !== id && p !== half);
+  const f = byId[id];
+  return favFeasible(rest, lockedSum + f.reach, lockedMilitant || f.type === "militant", slots - 1, target)
+    ? null : "Locking this would leave the table unable to reach the total";
+}
+
+function startFav() {
+  fav.seats = shuffleArr(playerNames().slice());
+  fav.pool = FACTIONS.filter(f => f.id !== "vagabond2").map(f => f.id);
+  fav.banned = []; fav.locked = []; fav.assigned = []; fav.log = [];
+  fav.pending = Array.from({ length: playerCount }, (_, i) => i);
+  fav.choiceIdx = 0; fav.choices = []; fav.round = 1;
+  fav.phase = "pass";
+  renderFav();
+}
+
+/* Reveal: bans first (ban trumps favorite), then favorites; collisions void both. */
+function resolveFavRound() {
+  const log = [];
+  const name = si => `<b>${fav.seats[si]}</b>`;
+  const fname = id => `<b>${byId[id].name}</b>`;
+  const voided = [];
+
+  for (const c of fav.choices.filter(c => c.kind === "ban")) {
+    if (fav.banned.some(b => b.id === c.id)) {
+      log.push({ cls: "ban-line", html: `${name(c.seatIndex)} also banned ${fname(c.id)} — already gone.` });
+      continue;
+    }
+    const { lockedSum, lockedMilitant, slots } = favState();
+    if (!favFeasible(fav.pool.filter(p => p !== c.id), lockedSum, lockedMilitant, slots, effTarget())) {
+      log.push({ cls: "void-line", html: `${name(c.seatIndex)} tried to ban ${fname(c.id)}, but the table couldn’t reach the total without it — they choose again.` });
+      voided.push(c.seatIndex);
+      continue;
+    }
+    fav.pool = fav.pool.filter(p => p !== c.id);
+    fav.banned.push({ id: c.id, by: c.seatIndex });
+    log.push({ cls: "ban-line", html: `✖ ${name(c.seatIndex)} banned ${fname(c.id)}.` });
+  }
+
+  const favs = fav.choices.filter(c => c.kind === "fav");
+  const byFaction = {};
+  for (const c of favs) (byFaction[c.id] ??= []).push(c);
+  for (const [id, group] of Object.entries(byFaction)) {
+    if (fav.banned.some(b => b.id === id)) {
+      for (const c of group) {
+        log.push({ cls: "void-line", html: `${name(c.seatIndex)} favorited ${fname(id)}, but the ban trumps it — they choose again.` });
+        voided.push(c.seatIndex);
+      }
+      continue;
+    }
+    if (group.length > 1) {
+      log.push({ cls: "void-line", html: `${group.map(c => name(c.seatIndex)).join(" and ")} both favorited ${fname(id)} — it stays in the pool and both choose again.` });
+      voided.push(...group.map(c => c.seatIndex));
+      continue;
+    }
+    const c = group[0];
+    const half = otherHalf(id);
+    const rest = fav.pool.filter(p => p !== id && p !== half);
+    const { lockedSum, lockedMilitant, slots } = favState();
+    const f = byId[id];
+    if (!favFeasible(rest, lockedSum + f.reach, lockedMilitant || f.type === "militant", slots - 1, effTarget())) {
+      log.push({ cls: "void-line", html: `${name(c.seatIndex)} favorited ${fname(id)}, but locking it would leave the table short — they choose again.` });
+      voided.push(c.seatIndex);
+      continue;
+    }
+    fav.pool = fav.pool.filter(p => p !== id);
+    fav.locked.push({ seatIndex: c.seatIndex, id });
+    log.push({ cls: "fav-line", html: `♥ ${name(c.seatIndex)} plays ${fname(id)}.` });
+    if (half && fav.pool.includes(half)) {
+      fav.pool = fav.pool.filter(p => p !== half);
+      log.push({ cls: "ban-line", html: `${fname(half)} leaves the pool — never in the same game as ${fname(id)} (A.8.1).` });
+    }
+  }
+
+  fav.log = log;
+  fav.pending = voided.sort((a, b) => a - b);
+  fav.choices = [];
+  fav.choiceIdx = 0;
+  fav.phase = "reveal";
+}
+
+function finishFav() {
+  const undecided = Array.from({ length: playerCount }, (_, i) => i)
+    .filter(i => !fav.locked.some(l => l.seatIndex === i));
+  const { lockedSum, lockedMilitant } = favState();
+  const target = effTarget();
+  const pool = fav.pool.map(id => byId[id]);
+  const combos = [];
+  (function rec(start, combo) {
+    if (combo.length === undecided.length) {
+      const sum = lockedSum + combo.reduce((s, f) => s + f.reach, 0);
+      const militant = lockedMilitant || combo.some(f => f.type === "militant");
+      const pair = combo.some(f => f.id === "vagabond") && combo.some(f => f.id === "knaves");
+      if (sum >= target && militant && !pair) combos.push(combo.slice());
+      return;
+    }
+    for (let i = start; i <= pool.length - (undecided.length - combo.length); i++) {
+      combo.push(pool[i]); rec(i + 1, combo); combo.pop();
+    }
+  })(0, []);
+  const combo = shuffleArr(combos[Math.floor(Math.random() * combos.length)].slice());
+  fav.assigned = fav.locked.map(l => ({ seatIndex: l.seatIndex, id: l.id, via: "fav" }));
+  undecided.forEach((si, i) => fav.assigned.push({ seatIndex: si, id: combo[i].id, via: "random" }));
+  fav.phase = "done";
+}
+
+function renderFavOrder() {
+  const ol = $("#fav-order");
+  ol.innerHTML = "";
+  fav.seats.forEach((name, i) => {
+    const lock = fav.locked.find(l => l.seatIndex === i);
+    const waiting = fav.pending.slice(fav.choiceIdx).includes(i);
+    const chosen = fav.pending.slice(0, fav.choiceIdx).includes(i);
+    const li = document.createElement("li");
+    li.className = (i === 0 ? "first " : "") +
+      (i === fav.pending[fav.choiceIdx] ? "current " : "") + (lock || chosen ? "done" : "");
+    li.innerHTML = `${i === 0 ? "★ " : ""}${name}
+      <span class="who">${lock ? "♥ " + byId[lock.id].name : chosen ? "has chosen" : waiting ? "choosing this round" : (i === 0 ? "first player" : `turn ${i + 1}`)}</span>`;
+    ol.appendChild(li);
+  });
+}
+
+function renderFav() {
+  for (const p of ["setup", "pass", "choose", "reveal", "done"])
+    $(`#fav-${p}`).classList.toggle("hidden", fav.phase !== p);
+
+  if (fav.phase === "setup") {
+    renderNameInputs($("#fav-players"));
+    $("#fav-adventurous").checked = adventurous;
+    return;
+  }
+
+  if (fav.phase === "pass") {
+    renderFavOrder();
+    const bannedNames = fav.banned.map(b => byId[b.id].name);
+    $("#fav-public").innerHTML = bannedNames.length
+      ? `<p class="note">Banned so far: ${bannedNames.join(", ")}.</p>` : "";
+    $("#fav-pass-name").textContent = fav.seats[fav.pending[fav.choiceIdx]];
+    return;
+  }
+
+  if (fav.phase === "choose") {
+    const seat = fav.pending[fav.choiceIdx];
+    $("#fav-banner").innerHTML = `<b>${fav.seats[seat]}</b> — favorite one faction or ban one, in secret.`;
+    $("#fav-kind-fav").setAttribute("aria-pressed", fav.pickKind === "fav");
+    $("#fav-kind-ban").setAttribute("aria-pressed", fav.pickKind === "ban");
+    const grid = $("#fav-grid");
+    grid.innerHTML = "";
+    for (const id of fav.pool) {
+      const f = byId[id];
+      const reason = favBlockReason(fav.pickKind, id);
+      const wrap = document.createElement("div");
+      const card = document.createElement("button");
+      card.className = "card" +
+        (fav.pickId === id ? (fav.pickKind === "ban" ? " selected-ban" : " selected") : "") +
+        (reason ? " dimmed" : "");
+      card.disabled = !!reason;
+      card.innerHTML = `<img src="${imgSrc(f)}" alt="${f.name} — ${f.type}">
+        <span class="reach-badge" title="Reach">${f.reach}</span>`;
+      card.addEventListener("click", () => { fav.pickId = id; renderFav(); });
+      wrap.appendChild(card);
+      if (reason) {
+        const note = document.createElement("p");
+        note.className = "pool-note";
+        note.textContent = reason;
+        wrap.appendChild(note);
+      }
+      grid.appendChild(wrap);
+    }
+    const confirm = $("#fav-confirm");
+    confirm.disabled = !fav.pickId;
+    confirm.textContent = fav.pickId
+      ? (fav.pickKind === "fav" ? `Lock in ♥ ${byId[fav.pickId].name}` : `Lock in ✖ ban ${byId[fav.pickId].name}`)
+      : "Lock in";
+    return;
+  }
+
+  if (fav.phase === "reveal") {
+    $("#fav-reveal-title").textContent = fav.round === 1 ? "The Reveal" : `The Reveal — round ${fav.round}`;
+    const ul = $("#fav-log");
+    ul.innerHTML = "";
+    for (const line of fav.log) {
+      const li = document.createElement("li");
+      li.className = line.cls;
+      li.innerHTML = line.html;
+      ul.appendChild(li);
+    }
+    $("#fav-continue").textContent = fav.pending.length
+      ? `Continue — ${fav.pending.map(si => fav.seats[si]).join(" and ")} choose again` : "Assign the rest";
+    return;
+  }
+
+  renderFavDone();
+}
+
+function renderFavDone() {
+  const total = fav.assigned.reduce((s, a) => s + byId[a.id].reach, 0);
+  const rec = REACH_TARGET[playerCount];
+  const cls = total >= rec ? "ok" : total >= 17 ? "adventurous" : "bad";
+  const label = total >= rec ? "good fit" : total >= 17 ? "adventurous (17+)" : "not enough reach";
+  $("#fav-total").innerHTML =
+    `Reach <b>${total}</b> / ${rec} recommended &nbsp;<span class="stamp ${cls}">${label}</span>`;
+  const ul = $("#fav-summary");
+  ul.innerHTML = "";
+  fav.seats.forEach((name, i) => {
+    const a = fav.assigned.find(x => x.seatIndex === i);
+    const f = byId[a.id];
+    const li = document.createElement("li");
+    li.innerHTML = `<img src="${imgSrc(f)}" alt="">
+      <div><div class="fac">${i === 0 ? "★ " : ""}${name} — ${f.name}</div>
+      <div class="sub">turn ${i + 1}${i === 0 ? " (first player)" : ""} · reach ${f.reach} · ${f.type}
+      · ${a.via === "fav" ? "♥ favorite" : "🎲 random"}</div></div>`;
+    ul.appendChild(li);
+  });
+  if (fav.banned.length) {
+    const li = document.createElement("li");
+    li.style.opacity = ".6";
+    li.innerHTML = `<div><div class="fac">Banned</div>
+      <div class="sub">${fav.banned.map(b => `${byId[b.id].name} (by ${fav.seats[b.by]})`).join(", ")}</div></div>`;
+    ul.appendChild(li);
+  }
+}
+
+function resetFav() {
+  fav.phase = "setup"; fav.pool = []; fav.locked = []; fav.banned = [];
+  fav.choices = []; fav.assigned = []; fav.pickId = null; fav.pickKind = "fav";
+  renderFav();
+}
+
+$("#fav-start-btn").addEventListener("click", startFav);
+$("#fav-show-btn").addEventListener("click", () => {
+  fav.phase = "choose"; fav.pickId = null; fav.pickKind = "fav"; renderFav();
+});
+$("#fav-kind-fav").addEventListener("click", () => { fav.pickKind = "fav"; fav.pickId = null; renderFav(); });
+$("#fav-kind-ban").addEventListener("click", () => { fav.pickKind = "ban"; fav.pickId = null; renderFav(); });
+$("#fav-confirm").addEventListener("click", () => {
+  fav.choices.push({ seatIndex: fav.pending[fav.choiceIdx], kind: fav.pickKind, id: fav.pickId });
+  fav.choiceIdx++;
+  if (fav.choiceIdx < fav.pending.length) fav.phase = "pass";
+  else resolveFavRound();
+  renderFav();
+});
+$("#fav-continue").addEventListener("click", () => {
+  if (fav.pending.length) { fav.round++; fav.phase = "pass"; }
+  else finishFav();
+  renderFav();
+});
+$("#fav-reset").addEventListener("click", resetFav);
+$("#fav-reset2").addEventListener("click", resetFav);
+$("#fav-reset3").addEventListener("click", resetFav);
+
 /* ---------------- init ---------------- */
 function setAdventurous(v) {
   adventurous = v;
   localStorage.setItem("rp.adventurous", v ? "1" : "0");
   $("#adventurous-toggle").checked = v;
   $("#hand-adventurous").checked = v;
+  $("#fav-adventurous").checked = v;
   updateSimple();
 }
-$("#adventurous-toggle").addEventListener("change", e => setAdventurous(e.target.checked));
-$("#hand-adventurous").addEventListener("change", e => setAdventurous(e.target.checked));
-$("#adventurous-toggle").checked = adventurous;
-$("#hand-adventurous").checked = adventurous;
+for (const id of ["#adventurous-toggle", "#hand-adventurous", "#fav-adventurous"]) {
+  $(id).addEventListener("change", e => setAdventurous(e.target.checked));
+  $(id).checked = adventurous;
+}
 setCount(playerCount);
 renderSimpleGrid();
 renderDraftSetup();
 renderHand();
+renderFav();
 </script>
 </body>
 </html>

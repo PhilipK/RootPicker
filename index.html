@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Root Faction Picker</title>
+<style>
+  :root {
+    --parchment: #EAE0C3;
+    --paper: #F4EBD2;
+    --paper-deep: #E2D5AE;
+    --ink: #3A2E1C;
+    --ink-soft: #6B5B40;
+    --militant: #8C2B1E;
+    --insurgent: #2C5175;
+    --moss: #5F7036;
+    --gold: #B08D2E;
+    --danger: #9B2915;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--parchment);
+    background-image: radial-gradient(ellipse at 50% 0%, rgba(255,250,230,.5), rgba(0,0,0,0) 60%),
+                      radial-gradient(ellipse at 50% 110%, rgba(90,70,30,.14), rgba(0,0,0,0) 55%);
+    color: var(--ink);
+    font-family: var(--serif);
+    line-height: 1.45;
+    min-height: 100vh;
+  }
+  main { max-width: 880px; margin: 0 auto; padding: 0 14px 130px; }
+
+  /* ---------- header ---------- */
+  header { text-align: center; padding: 22px 12px 4px; }
+  header h1 {
+    font-size: clamp(1.7rem, 6vw, 2.5rem);
+    font-variant: small-caps;
+    letter-spacing: .12em;
+    margin: 0;
+    font-weight: 700;
+  }
+  header .rule {
+    width: min(420px, 80%); margin: 8px auto 6px;
+    border-top: 2px solid var(--ink); border-bottom: 1px solid var(--ink);
+    height: 3px;
+  }
+  header p { margin: 2px 0 0; color: var(--ink-soft); font-style: italic; font-size: .95rem; }
+
+  /* ---------- tabs ---------- */
+  nav { display: flex; justify-content: center; gap: 6px; margin: 18px 0 8px; flex-wrap: wrap; }
+  nav button {
+    font: inherit; font-variant: small-caps; letter-spacing: .06em; font-size: 1.02rem;
+    background: none; border: none; border-bottom: 3px solid transparent;
+    color: var(--ink-soft); padding: 6px 14px; cursor: pointer;
+  }
+  nav button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); font-weight: 700; }
+  nav button:focus-visible, .btn:focus-visible, .card:focus-visible, .stepper button:focus-visible,
+  input:focus-visible, .chip:focus-visible {
+    outline: 3px solid var(--gold); outline-offset: 2px;
+  }
+
+  /* ---------- player count ---------- */
+  .stepper {
+    display: flex; align-items: center; justify-content: center; gap: 14px; margin: 10px 0 18px;
+  }
+  .stepper .label { font-variant: small-caps; letter-spacing: .06em; font-size: 1.05rem; }
+  .stepper button {
+    width: 40px; height: 40px; border-radius: 50%;
+    border: 2px solid var(--ink); background: var(--paper); color: var(--ink);
+    font-size: 1.4rem; font-family: var(--serif); cursor: pointer; line-height: 1;
+  }
+  .stepper button:disabled { opacity: .35; cursor: default; }
+  .stepper .count { font-size: 1.7rem; font-weight: 700; min-width: 1.4em; text-align: center; }
+
+  h2 {
+    font-variant: small-caps; letter-spacing: .08em; font-size: 1.25rem;
+    border-bottom: 1px solid var(--ink-soft); padding-bottom: 4px; margin: 26px 0 12px;
+  }
+  .note { color: var(--ink-soft); font-style: italic; font-size: .92rem; margin: 6px 0; }
+
+  /* ---------- faction grid ---------- */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .card {
+    position: relative; border: 2px solid var(--ink); border-radius: 10px;
+    background: var(--paper); cursor: pointer; padding: 0; overflow: hidden;
+    font: inherit; color: inherit; text-align: center;
+    transition: transform .12s ease, box-shadow .12s ease;
+    box-shadow: 0 1px 3px rgba(58,46,28,.25);
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 4px 9px rgba(58,46,28,.3); }
+  .card img { display: block; width: 100%; height: auto; }
+  .card .reach-badge {
+    position: absolute; top: 6px; right: 6px;
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 2px solid var(--ink); background: var(--paper);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 1.05rem;
+    box-shadow: 0 1px 2px rgba(58,46,28,.35);
+  }
+  .card .corner-tag {
+    position: absolute; top: 6px; left: 6px;
+    font-size: .68rem; font-variant: small-caps; letter-spacing: .04em;
+    background: var(--paper); border: 1px solid var(--ink-soft); border-radius: 4px;
+    padding: 1px 5px; color: var(--ink-soft);
+  }
+  .card.selected { border-color: var(--moss); box-shadow: 0 0 0 3px var(--moss), 0 3px 8px rgba(58,46,28,.3); }
+  .card.selected::after {
+    content: "✓"; position: absolute; bottom: 6px; right: 8px;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--moss); color: var(--paper);
+    font-size: 1.2rem; font-weight: 700; line-height: 30px;
+  }
+  .card.dimmed { opacity: .45; }
+  .card:disabled { cursor: not-allowed; }
+
+  /* ---------- reach tracker (sticky) ---------- */
+  #tracker {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+    background: var(--paper); border-top: 3px double var(--ink);
+    padding: 10px 14px 12px;
+    box-shadow: 0 -4px 14px rgba(58,46,28,.25);
+  }
+  #tracker .inner { max-width: 880px; margin: 0 auto; }
+  #tracker .row1 { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  #tracker .totals { font-size: 1.05rem; }
+  #tracker .totals b { font-size: 1.35rem; }
+  .stamp {
+    display: inline-block; font-variant: small-caps; letter-spacing: .08em; font-weight: 700;
+    border: 2px solid; border-radius: 6px; padding: 2px 10px; transform: rotate(-3deg);
+    font-size: .95rem;
+  }
+  .stamp.ok { color: var(--moss); border-color: var(--moss); }
+  .stamp.adventurous { color: var(--gold); border-color: var(--gold); }
+  .stamp.bad { color: var(--danger); border-color: var(--danger); }
+  .stamp.neutral { color: var(--ink-soft); border-color: var(--ink-soft); transform: none; font-weight: 400; }
+  @media (prefers-reduced-motion: no-preference) {
+    .stamp:not(.neutral) { animation: stampIn .25s ease-out; }
+    @keyframes stampIn { from { transform: scale(1.6) rotate(-3deg); opacity: 0; } to { transform: scale(1) rotate(-3deg); opacity: 1; } }
+  }
+
+  .track { position: relative; height: 26px; margin-top: 10px;
+    background: var(--paper-deep); border: 2px solid var(--ink); border-radius: 6px; overflow: hidden; }
+  .track .fill { position: absolute; top: 0; bottom: 0; left: 0; width: 0; transition: width .25s ease; }
+  .track .fill.ok { background: var(--moss); }
+  .track .fill.adventurous { background: var(--gold); }
+  .track .fill.bad { background: var(--danger); }
+  .track .ticks { position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(to right, rgba(58,46,28,.35) 0 1px, transparent 1px calc(100% / 32)); }
+  .track .mark { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--ink); }
+  .track .mark.adv { background: transparent; border-left: 3px dotted var(--ink); }
+  .track-labels { position: relative; height: 1.1em; font-size: .78rem; color: var(--ink-soft); }
+  .track-labels span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  #tracker .warnings { margin-top: 6px; font-size: .88rem; color: var(--danger); }
+  #tracker .warnings div::before { content: "⚠ "; }
+
+  /* ---------- buttons / forms ---------- */
+  .btn {
+    font: inherit; font-variant: small-caps; letter-spacing: .06em; font-size: 1.05rem;
+    background: var(--ink); color: var(--paper); border: 2px solid var(--ink);
+    border-radius: 8px; padding: 9px 20px; cursor: pointer;
+  }
+  .btn.secondary { background: var(--paper); color: var(--ink); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0; }
+  input[type="text"] {
+    font: inherit; background: var(--paper); color: var(--ink);
+    border: none; border-bottom: 2px solid var(--ink-soft); padding: 5px 8px; width: 100%;
+  }
+  .players-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin: 8px 0; }
+  .players-list label { display: flex; align-items: center; gap: 8px; font-size: .95rem; }
+  .players-list .seat { color: var(--ink-soft); white-space: nowrap; }
+
+  /* ---------- draft pool chips (include/omit) ---------- */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+  .chip {
+    font: inherit; font-size: .9rem; cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+    border: 2px solid var(--ink-soft); border-radius: 20px; padding: 4px 12px 4px 6px;
+    background: var(--paper); color: var(--ink-soft);
+  }
+  .chip img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; object-position: 50% 20%; filter: grayscale(1); }
+  .chip.on { border-color: var(--ink); color: var(--ink); background: #fff8e4; }
+  .chip.on img { filter: none; }
+  .chip:disabled { opacity: .4; cursor: not-allowed; }
+  .chip .t { font-size: .72rem; font-variant: small-caps; padding: 0 5px; border-radius: 4px; color: #fff; }
+  .chip .t.militant { background: var(--militant); }
+  .chip .t.insurgent { background: var(--insurgent); }
+
+  /* ---------- draft board ---------- */
+  .order-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; padding: 0; list-style: none; }
+  .order-list li {
+    background: var(--paper); border: 2px solid var(--ink-soft); border-radius: 8px;
+    padding: 5px 12px; font-size: .95rem;
+  }
+  .order-list li.first { border-color: var(--ink); font-weight: 700; }
+  .order-list li.current { border-color: var(--moss); box-shadow: 0 0 0 2px var(--moss); font-weight: 700; }
+  .order-list li.done { opacity: .55; }
+  .order-list li .who { color: var(--ink-soft); font-size: .8rem; display: block; }
+
+  .picker-banner {
+    background: var(--paper); border: 2px solid var(--moss); border-radius: 10px;
+    padding: 10px 14px; margin: 14px 0; font-size: 1.05rem;
+  }
+  .picker-banner b { font-variant: small-caps; letter-spacing: .04em; }
+
+  .pool-note { font-size: .85rem; margin: 6px 4px 0; color: var(--ink-soft); font-style: italic; }
+  .card .lock-badge {
+    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(58,46,28,.45); color: var(--paper); font-variant: small-caps; letter-spacing: .05em;
+    font-size: .9rem; padding: 8px; text-align: center;
+  }
+  .card .lock-badge .padlock { font-size: 1.6rem; }
+  .card.locked img { filter: grayscale(.9); }
+  .card.taken { opacity: .5; cursor: default; }
+  .card .taken-by {
+    position: absolute; bottom: 6px; left: 6px; right: 6px;
+    background: var(--ink); color: var(--paper); border-radius: 6px; padding: 3px 6px; font-size: .85rem;
+  }
+
+  .summary-list { list-style: none; margin: 10px 0; padding: 0; display: grid; gap: 8px; }
+  .summary-list li {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--paper); border: 2px solid var(--ink-soft); border-radius: 10px; padding: 8px 12px;
+  }
+  .summary-list img { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; object-position: 50% 15%; }
+  .summary-list .fac { font-weight: 700; }
+  .summary-list .sub { color: var(--ink-soft); font-size: .88rem; }
+  .checklist { margin: 8px 0 0; padding-left: 1.3em; }
+  .checklist li { margin: 4px 0; }
+  .law-ref { color: var(--ink-soft); font-size: .8rem; }
+
+  .placeholder-box {
+    border: 2px dashed var(--ink-soft); border-radius: 12px; padding: 24px; text-align: center;
+    color: var(--ink-soft); font-style: italic; margin-top: 20px;
+  }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Root · Faction Picker</h1>
+  <div class="rule"></div>
+  <p>per the Law of Root, October 2025</p>
+</header>
+
+<main>
+  <nav role="tablist">
+    <button role="tab" aria-selected="true" data-mode="simple">Simple Setup</button>
+    <button role="tab" aria-selected="false" data-mode="draft">Advanced Draft</button>
+    <button role="tab" aria-selected="false" data-mode="hand">Hand Draft</button>
+  </nav>
+
+  <div class="stepper">
+    <span class="label">Players</span>
+    <button id="pc-minus" aria-label="Fewer players">−</button>
+    <span class="count" id="pc-count">4</span>
+    <button id="pc-plus" aria-label="More players">+</button>
+  </div>
+
+  <!-- ============ SIMPLE MODE ============ -->
+  <section id="mode-simple">
+    <p class="note">Everyone picks freely. The Law asks the chosen factions’ reach to add up to the
+      recommended total for your player count (Law 5.2). Any mix of 17+ is allowed for adventurous groups.</p>
+    <label class="note" style="display:block">
+      <input type="checkbox" id="adventurous-toggle">
+      Adventurous group — allow any mix that reaches 17+
+    </label>
+    <div class="grid" id="simple-grid"></div>
+  </section>
+
+  <!-- ============ ADVANCED DRAFT MODE ============ -->
+  <section id="mode-draft" class="hidden">
+
+    <div id="draft-setup">
+      <h2>Players &amp; Seats <span class="law-ref">(A.4)</span></h2>
+      <p class="note">Names are optional. Seating order and first player are randomized when you deal.</p>
+      <div class="players-list" id="draft-players"></div>
+
+      <h2>Draft Pool <span class="law-ref">(A.8.1)</span></h2>
+      <p class="note">Tap to omit factions you don’t own or don’t want. The Vagabond and the Knaves of the
+        Deepwood cannot both be included.</p>
+      <div class="chips" id="draft-chips"></div>
+      <p class="note" id="two-player-note"></p>
+      <label class="note" id="keep-insurgents-wrap" style="display:block">
+        <input type="checkbox" id="keep-insurgents">
+        Keep insurgents in the deal (two-player groups playing with hirelings, feeling adventurous)
+      </label>
+
+      <div class="btn-row">
+        <button class="btn" id="deal-btn">Shuffle seats &amp; deal</button>
+      </div>
+      <p class="note" id="deal-error" style="color:var(--danger)"></p>
+    </div>
+
+    <div id="draft-board" class="hidden">
+      <h2>Turn Order</h2>
+      <ul class="order-list" id="turn-order"></ul>
+
+      <h2>Draft Pool <span class="law-ref">(A.8.2)</span></h2>
+      <p class="note">One militant was dealt first, then one card per player. Picks go from the last player
+        in turn order, backwards. Set up your faction immediately when you pick (A.8.3).</p>
+      <div class="picker-banner" id="picker-banner"></div>
+      <div class="grid" id="pool-grid"></div>
+
+      <div class="btn-row">
+        <button class="btn secondary" id="undo-btn">Undo last pick</button>
+        <button class="btn secondary" id="redeal-btn">Start over</button>
+      </div>
+    </div>
+
+    <div id="draft-done" class="hidden">
+      <h2>The Woodland is Set</h2>
+      <ul class="summary-list" id="draft-summary"></ul>
+      <h2>Before You Begin</h2>
+      <ul class="checklist">
+        <li>Each player draws <b>five</b> cards <span class="law-ref">(A.7 — two players: remove the four dominance cards first)</span></li>
+        <li>Place score markers on “0” <span class="law-ref">(A.9)</span></li>
+        <li>Everyone keeps <b>three</b> cards and puts two face down on the deck, then shuffle it <span class="law-ref">(A.10)</span></li>
+      </ul>
+      <div class="btn-row">
+        <button class="btn secondary" id="undo-btn-done">Undo last pick</button>
+        <button class="btn secondary" id="redeal-btn-done">New draft</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HAND DRAFT (mode 3) ============ -->
+  <section id="mode-hand" class="hidden">
+    <div class="placeholder-box">
+      Hand Draft is not built yet. The idea: every player is dealt a small hand of factions and picks one,
+      pass-and-play style. Let’s design the rules together first.
+    </div>
+  </section>
+</main>
+
+<!-- sticky reach tracker (simple mode only) -->
+<div id="tracker">
+  <div class="inner">
+    <div class="row1">
+      <span class="totals">Reach <b id="tr-total">0</b> / <span id="tr-target">21</span> needed</span>
+      <span id="tr-stamp" class="stamp neutral">pick your factions</span>
+    </div>
+    <div class="track">
+      <div class="ticks"></div>
+      <div class="fill" id="tr-fill"></div>
+      <div class="mark adv" id="tr-adv"></div>
+      <div class="mark" id="tr-goal"></div>
+    </div>
+    <div class="track-labels">
+      <span id="tr-adv-label">17 adventurous</span>
+      <span id="tr-goal-label">21 recommended</span>
+    </div>
+    <div class="warnings" id="tr-warnings"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ---------------- data (Law of Root, Oct 2025) ---------------- */
+const FACTIONS = [
+  { id:"marquise",  name:"Marquise de Cat",        reach:10, type:"militant",  corner:true  },
+  { id:"hundreds",  name:"Lord of the Hundreds",   reach:9,  type:"militant",  corner:true  },
+  { id:"keepers",   name:"Keepers in Iron",        reach:8,  type:"militant",  corner:true  },
+  { id:"duchy",     name:"Underground Duchy",      reach:8,  type:"militant",  corner:true  },
+  { id:"lilypad",   name:"Lilypad Diaspora",       reach:7,  type:"militant",  corner:false },
+  { id:"eyrie",     name:"Eyrie Dynasties",        reach:7,  type:"militant",  corner:true  },
+  { id:"vagabond",  name:"Vagabond",               reach:5,  type:"insurgent", corner:false,
+    dealNote:"Deal 1 random character card next to it (A.8.2.III)" },
+  { id:"riverfolk", name:"Riverfolk Company",      reach:5,  type:"insurgent", corner:false },
+  { id:"knaves",    name:"Knaves of the Deepwood", reach:4,  type:"insurgent", corner:false,
+    dealNote:"Deal 4 random Captain cards next to it; choose 3 in setup (A.8.2.IV)" },
+  { id:"twilight",  name:"Twilight Council",       reach:4,  type:"insurgent", corner:true  },
+  { id:"woodland",  name:"Woodland Alliance",      reach:3,  type:"insurgent", corner:false },
+  { id:"corvid",    name:"Corvid Conspiracy",      reach:3,  type:"insurgent", corner:false },
+  { id:"lizard",    name:"The Lizard Cult",        reach:2,  type:"insurgent", corner:true  },
+  { id:"vagabond2", name:"Second Vagabond",        reach:2,  type:"insurgent", corner:false, img:"vagabond",
+    dealNote:"Deal 1 random character card next to it (A.8.2.III)" },
+];
+const byId = Object.fromEntries(FACTIONS.map(f => [f.id, f]));
+const imgSrc = f => `assets/factions/${f.img || f.id}.png`;
+const REACH_TARGET = { 2:17, 3:18, 4:21, 5:25, 6:28 };
+const TRACK_MAX = 32;
+
+/* ---------------- shared state ---------------- */
+const store = {
+  get count() { return Math.min(6, Math.max(2, +(localStorage.getItem("rp.count") || 4))); },
+  set count(v) { localStorage.setItem("rp.count", v); },
+  get names() { try { return JSON.parse(localStorage.getItem("rp.names")) || []; } catch { return []; } },
+  set names(v) { localStorage.setItem("rp.names", JSON.stringify(v)); },
+};
+let playerCount = store.count;
+let mode = "simple";
+const $ = sel => document.querySelector(sel);
+
+/* ---------------- tabs ---------------- */
+document.querySelectorAll("nav [role=tab]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    mode = btn.dataset.mode;
+    document.querySelectorAll("nav [role=tab]").forEach(b =>
+      b.setAttribute("aria-selected", b === btn ? "true" : "false"));
+    for (const m of ["simple", "draft", "hand"])
+      $(`#mode-${m}`).classList.toggle("hidden", m !== mode);
+    $("#tracker").classList.toggle("hidden", mode !== "simple");
+    document.body.style.paddingBottom = mode === "simple" ? "" : "0";
+  });
+});
+
+/* ---------------- player count stepper ---------------- */
+function setCount(v) {
+  playerCount = Math.min(6, Math.max(2, v));
+  store.count = playerCount;
+  $("#pc-count").textContent = playerCount;
+  $("#pc-minus").disabled = playerCount <= 2;
+  $("#pc-plus").disabled = playerCount >= 6;
+  renderSimpleTracker();
+  renderDraftSetup();
+}
+$("#pc-minus").addEventListener("click", () => setCount(playerCount - 1));
+$("#pc-plus").addEventListener("click", () => setCount(playerCount + 1));
+
+/* ================= SIMPLE MODE ================= */
+const selected = new Set();
+let adventurous = localStorage.getItem("rp.adventurous") === "1";
+const effTarget = () => adventurous ? 17 : REACH_TARGET[playerCount];
+
+function renderSimpleGrid() {
+  const grid = $("#simple-grid");
+  grid.innerHTML = "";
+  for (const f of FACTIONS) {
+    const card = document.createElement("button");
+    card.className = "card";
+    card.dataset.id = f.id;
+    card.setAttribute("aria-pressed", selected.has(f.id));
+    card.innerHTML = `
+      <img src="${imgSrc(f)}" alt="${f.name} — ${f.type}">
+      <span class="reach-badge" title="Reach">${f.reach}</span>
+      ${f.corner ? '<span class="corner-tag" title="Starts in a corner clearing">corner</span>' : ""}`;
+    card.addEventListener("click", () => toggleFaction(f.id));
+    grid.appendChild(card);
+  }
+  updateSimple();
+}
+
+function toggleFaction(id) {
+  if (selected.has(id)) {
+    selected.delete(id);
+    if (id === "vagabond") selected.delete("vagabond2"); // second card needs the first
+  } else {
+    selected.add(id);
+  }
+  updateSimple();
+}
+
+/* Could the table still reach the recommended total if this faction is added?
+   Checks the best case: current picks + candidate + the highest-reach factions
+   still available for the remaining seats. */
+function blockReason(id) {
+  if (id === "vagabond2" && !selected.has("vagabond")) return "Select the Vagabond first";
+  const S = new Set(selected); S.add(id);
+  if (S.has("vagabond") && S.has("knaves"))
+    return "The Vagabond and the Knaves cannot both be in the same game (A.8.1)";
+  const slots = playerCount - S.size;
+  if (slots < 0) return `You already have ${playerCount} factions — deselect one first`;
+  let pool = FACTIONS.filter(f => !S.has(f.id));
+  if (S.has("knaves")) pool = pool.filter(f => f.id !== "vagabond" && f.id !== "vagabond2");
+  if (!S.has("vagabond") && !pool.some(f => f.id === "vagabond"))
+    pool = pool.filter(f => f.id !== "vagabond2");
+  const best = [...S].reduce((s, fid) => s + byId[fid].reach, 0) +
+    pool.map(f => f.reach).sort((a, b) => b - a).slice(0, slots).reduce((s, r) => s + r, 0);
+  const target = effTarget();
+  if (best < target)
+    return `Best possible total would be ${best} — can’t reach ${target}`;
+  return null;
+}
+
+function updateSimple() {
+  document.querySelectorAll("#simple-grid .card").forEach(card => {
+    const id = card.dataset.id;
+    const isSel = selected.has(id);
+    card.classList.toggle("selected", isSel);
+    card.setAttribute("aria-pressed", isSel);
+    const reason = isSel ? null : blockReason(id);
+    card.classList.toggle("dimmed", !!reason);
+    card.disabled = !!reason;
+    card.title = reason || "";
+  });
+  renderSimpleTracker();
+}
+
+function renderSimpleTracker() {
+  if (mode !== "simple" && mode !== undefined) { /* tracker hidden anyway */ }
+  const target = REACH_TARGET[playerCount];
+  const picks = [...selected].map(id => byId[id]);
+  const total = picks.reduce((s, f) => s + f.reach, 0);
+  const n = picks.length;
+
+  $("#tr-total").textContent = total;
+  $("#tr-target").textContent = effTarget();
+
+  // track geometry
+  const pct = v => Math.min(100, v / TRACK_MAX * 100) + "%";
+  $("#tr-fill").style.width = pct(total);
+  $("#tr-adv").style.left = pct(17);
+  $("#tr-goal").style.left = pct(target);
+  $("#tr-adv-label").style.left = pct(17);
+  $("#tr-goal-label").style.left = pct(target);
+  $("#tr-goal-label").textContent = `${target} recommended`;
+  $("#tr-adv-label").classList.toggle("hidden", target - 17 < 3 && target !== 17);
+
+  // verdict
+  const stamp = $("#tr-stamp");
+  const fill = $("#tr-fill");
+  let cls, text;
+  if (n === 0) { cls = "neutral"; text = "pick your factions"; }
+  else if (n !== playerCount) {
+    cls = "neutral";
+    text = n < playerCount ? `pick ${playerCount - n} more` : `${n - playerCount} too many — drop some`;
+  }
+  else if (total >= target) { cls = "ok"; text = "good fit"; }
+  else if (total >= 17) { cls = "adventurous"; text = "adventurous (17+)"; }
+  else { cls = "bad"; text = "not enough reach"; }
+  stamp.className = "stamp " + cls;
+  stamp.textContent = text;
+  fill.className = "fill " + (total >= target ? "ok" : total >= 17 ? "adventurous" : "bad");
+
+  // warnings
+  const warn = [];
+  const cornerCount = picks.filter(f => f.corner).length;
+  if (cornerCount >= 5)
+    warn.push(`${cornerCount} factions start in corner clearings — you must use the Advanced Setup (Law 5)`);
+  if (playerCount === 2 && n === 2)
+    warn.push("Two players: remove the four dominance cards from the deck (5.1.3)");
+  $("#tr-warnings").innerHTML = warn.map(w => `<div>${w}</div>`).join("");
+}
+
+/* ================= ADVANCED DRAFT MODE ================= */
+const draft = {
+  included: new Set(FACTIONS.map(f => f.id).filter(id => id !== "knaves" && id !== "vagabond2")),
+  seats: [],        // player names in turn order (index 0 = first player)
+  pool: [],         // { faction, lockedInsurgent, takenBy }
+  pickQueue: [],    // seat indices in pick order
+  picks: [],        // history: { seatIndex, poolIndex }
+  phase: "setup",
+};
+
+function playerNames() {
+  const names = store.names;
+  return Array.from({ length: playerCount }, (_, i) => (names[i] || "").trim() || `Player ${i + 1}`);
+}
+
+function renderDraftSetup() {
+  // player name inputs
+  const wrap = $("#draft-players");
+  wrap.innerHTML = "";
+  const names = store.names;
+  for (let i = 0; i < playerCount; i++) {
+    const label = document.createElement("label");
+    label.innerHTML = `<span class="seat">${i + 1}.</span>`;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = `Player ${i + 1}`;
+    input.value = names[i] || "";
+    input.addEventListener("input", () => {
+      const n = store.names; n[i] = input.value; store.names = n;
+    });
+    label.appendChild(input);
+    wrap.appendChild(label);
+  }
+
+  // include/omit chips
+  const chips = $("#draft-chips");
+  chips.innerHTML = "";
+  for (const f of FACTIONS) {
+    const chip = document.createElement("button");
+    chip.className = "chip" + (draft.included.has(f.id) ? " on" : "");
+    chip.setAttribute("aria-pressed", draft.included.has(f.id));
+    chip.innerHTML = `<img src="${imgSrc(f)}" alt=""> ${f.name} <span class="t ${f.type}">${f.type[0].toUpperCase() + f.type.slice(1)}</span>`;
+    const conflict =
+      (f.id === "knaves" && draft.included.has("vagabond")) ||
+      ((f.id === "vagabond" || f.id === "vagabond2") && draft.included.has("knaves")) ||
+      (f.id === "vagabond2" && !draft.included.has("vagabond"));
+    if (conflict && !draft.included.has(f.id)) {
+      chip.disabled = true;
+      chip.title = f.id === "vagabond2"
+        ? "Include the Vagabond first"
+        : "Vagabond and Knaves cannot both be included (A.8.1)";
+    }
+    chip.addEventListener("click", () => {
+      if (draft.included.has(f.id)) {
+        draft.included.delete(f.id);
+        if (f.id === "vagabond") draft.included.delete("vagabond2");
+      } else {
+        draft.included.add(f.id);
+      }
+      renderDraftSetup();
+    });
+    chips.appendChild(chip);
+  }
+
+  $("#two-player-note").textContent = playerCount === 2
+    ? "Two players: all insurgent setup cards are removed before dealing (A.8.2.I)." : "";
+  $("#keep-insurgents-wrap").style.display = playerCount === 2 ? "block" : "none";
+  $("#deal-error").textContent = "";
+}
+
+function dealDraft() {
+  const keepInsurgents = playerCount !== 2 || $("#keep-insurgents").checked;
+  let cards = FACTIONS.filter(f => draft.included.has(f.id));
+  if (!keepInsurgents) cards = cards.filter(f => f.type === "militant");
+
+  const militants = cards.filter(f => f.type === "militant");
+  const others = cards.filter(f => f.type !== "militant");
+  const err = $("#deal-error");
+  if (militants.length === 0) { err.textContent = "The pool needs at least one militant faction (A.8.2)."; return; }
+  if (cards.length < playerCount + 1) {
+    err.textContent = `Not enough factions in the pool: need ${playerCount + 1}, have ${cards.length}.`; return;
+  }
+
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+  // A.4 — random seating and first player
+  draft.seats = shuffle(playerNames().slice());
+
+  // A.8.2 — one militant first, then one card per player from the rest
+  shuffle(militants);
+  const seed = militants.shift();
+  const rest = shuffle(militants.concat(others)).slice(0, playerCount);
+  draft.pool = [seed, ...rest].map(f => ({ faction: f, lockedInsurgent: false, takenBy: null }));
+  const last = draft.pool[draft.pool.length - 1];
+  if (last.faction.type === "insurgent") last.lockedInsurgent = true; // A.8.2.II
+
+  // A.8.3 — picks start with the last player in turn order, going backwards
+  draft.pickQueue = Array.from({ length: playerCount }, (_, i) => playerCount - 1 - i);
+  draft.picks = [];
+  draft.phase = "draft";
+  renderDraft();
+}
+
+function militantChosen() {
+  return draft.picks.some(p => draft.pool[p.poolIndex].faction.type === "militant");
+}
+function currentPicker() { return draft.pickQueue[draft.picks.length]; }
+
+function renderDraft() {
+  $("#draft-setup").classList.toggle("hidden", draft.phase !== "setup");
+  $("#draft-board").classList.toggle("hidden", draft.phase !== "draft");
+  $("#draft-done").classList.toggle("hidden", draft.phase !== "done");
+  if (draft.phase === "setup") { renderDraftSetup(); return; }
+  if (draft.phase === "done") { renderDraftDone(); return; }
+
+  // turn order
+  const ol = $("#turn-order");
+  ol.innerHTML = "";
+  draft.seats.forEach((name, i) => {
+    const li = document.createElement("li");
+    const pick = draft.picks.find(p => p.seatIndex === i);
+    li.className = (i === 0 ? "first " : "") + (i === currentPicker() ? "current " : "") + (pick ? "done" : "");
+    li.innerHTML = `${i === 0 ? "★ " : ""}${name}
+      <span class="who">${pick ? byId[draft.pool[pick.poolIndex].faction.id].name : (i === 0 ? "first player" : `turn ${i + 1}`)}</span>`;
+    ol.appendChild(li);
+  });
+
+  // picker banner
+  const picker = currentPicker();
+  $("#picker-banner").innerHTML =
+    `<b>${draft.seats[picker]}</b> picks now — tap a faction, then set it up before the next pick.`;
+
+  // pool
+  const grid = $("#pool-grid");
+  grid.innerHTML = "";
+  const unlocked = militantChosen();
+  draft.pool.forEach((slot, idx) => {
+    const f = slot.faction;
+    const locked = slot.lockedInsurgent && !unlocked && !slot.takenBy;
+    const wrap = document.createElement("div");
+    const card = document.createElement("button");
+    card.className = "card" + (locked ? " locked" : "") + (slot.takenBy ? " taken" : "");
+    card.disabled = locked || !!slot.takenBy;
+    card.innerHTML = `
+      <img src="${imgSrc(f)}" alt="${f.name} — ${f.type}">
+      <span class="reach-badge" title="Reach">${f.reach}</span>
+      ${locked ? '<span class="lock-badge"><span class="padlock">🔒</span>locked until a militant is chosen (A.8.2.II)</span>' : ""}
+      ${slot.takenBy ? `<span class="taken-by">${slot.takenBy}</span>` : ""}`;
+    card.addEventListener("click", () => {
+      slot.takenBy = draft.seats[currentPicker()];
+      draft.picks.push({ seatIndex: currentPicker(), poolIndex: idx });
+      if (draft.picks.length === playerCount) draft.phase = "done";
+      renderDraft();
+    });
+    wrap.appendChild(card);
+    if (f.dealNote && !slot.takenBy) {
+      const note = document.createElement("p");
+      note.className = "pool-note";
+      note.textContent = f.dealNote;
+      wrap.appendChild(note);
+    }
+    grid.appendChild(wrap);
+  });
+}
+
+function renderDraftDone() {
+  const ul = $("#draft-summary");
+  ul.innerHTML = "";
+  draft.seats.forEach((name, i) => {
+    const pick = draft.picks.find(p => p.seatIndex === i);
+    const f = draft.pool[pick.poolIndex].faction;
+    const li = document.createElement("li");
+    li.innerHTML = `<img src="${imgSrc(f)}" alt="">
+      <div><div class="fac">${i === 0 ? "★ " : ""}${name} — ${f.name}</div>
+      <div class="sub">turn ${i + 1}${i === 0 ? " (first player)" : ""} · reach ${f.reach} · ${f.type}</div></div>`;
+    ul.appendChild(li);
+  });
+  const leftover = draft.pool.find(s => !s.takenBy);
+  if (leftover) {
+    const li = document.createElement("li");
+    li.style.opacity = ".6";
+    li.innerHTML = `<img src="${imgSrc(leftover.faction)}" alt="">
+      <div><div class="fac">Left in the pool — ${leftover.faction.name}</div>
+      <div class="sub">return it to the box</div></div>`;
+    ul.appendChild(li);
+  }
+}
+
+function undoPick() {
+  if (!draft.picks.length) return;
+  const last = draft.picks.pop();
+  draft.pool[last.poolIndex].takenBy = null;
+  draft.phase = "draft";
+  renderDraft();
+}
+function resetDraft() {
+  draft.pool = []; draft.picks = []; draft.phase = "setup";
+  renderDraft();
+}
+
+$("#deal-btn").addEventListener("click", dealDraft);
+$("#undo-btn").addEventListener("click", undoPick);
+$("#undo-btn-done").addEventListener("click", undoPick);
+$("#redeal-btn").addEventListener("click", resetDraft);
+$("#redeal-btn-done").addEventListener("click", resetDraft);
+
+/* ---------------- init ---------------- */
+$("#adventurous-toggle").checked = adventurous;
+$("#adventurous-toggle").addEventListener("change", e => {
+  adventurous = e.target.checked;
+  localStorage.setItem("rp.adventurous", adventurous ? "1" : "0");
+  updateSimple();
+});
+setCount(playerCount);
+renderSimpleGrid();
+renderDraftSetup();
+</script>
+</body>
+</html>

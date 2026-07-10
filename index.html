@@ -327,9 +327,58 @@
 
   <!-- ============ HAND DRAFT (mode 3) ============ -->
   <section id="mode-hand" class="hidden">
-    <div class="placeholder-box">
-      Hand Draft is not built yet. The idea: every player is dealt a small hand of factions and picks one,
-      pass-and-play style. Let’s design the rules together first.
+
+    <div id="hand-setup">
+      <h2>Players &amp; Seats</h2>
+      <p class="note">Names are optional. Seating order and first player are randomized when you deal.</p>
+      <div class="players-list" id="hand-players"></div>
+
+      <h2>Deal</h2>
+      <p class="note">Each player gets a secret hand of <span id="hand-size-note">three</span> factions and picks
+        one, passing the device around. Hands are dealt so the table can always reach the required total and
+        field at least one militant. The Second Vagabond sits out, and either the Vagabond or the Knaves is
+        randomly left out of the deck (A.8.1).</p>
+      <label class="note" style="display:block">
+        <input type="checkbox" id="hand-adventurous">
+        Adventurous group — allow any mix that reaches 17+
+      </label>
+      <div class="btn-row">
+        <button class="btn" id="hand-deal-btn">Shuffle seats &amp; deal hands</button>
+      </div>
+      <p class="note" id="hand-deal-error" style="color:var(--danger)"></p>
+    </div>
+
+    <div id="hand-pass" class="hidden">
+      <h2>Turn Order</h2>
+      <ul class="order-list" id="hand-order-pass"></ul>
+      <div class="picker-banner">Pass the device to <b id="hand-pass-name"></b> — only they should look.</div>
+      <div class="btn-row">
+        <button class="btn" id="hand-show-btn">Show my hand</button>
+        <button class="btn secondary" id="hand-undo">Undo last pick</button>
+        <button class="btn secondary" id="hand-reset">Start over</button>
+      </div>
+    </div>
+
+    <div id="hand-pick" class="hidden">
+      <div class="picker-banner" id="hand-banner"></div>
+      <div class="grid" id="hand-grid"></div>
+      <p class="note">Pick one — it becomes public and you set it up right away. The rest of your hand stays
+        secret until the end.</p>
+    </div>
+
+    <div id="hand-done" class="hidden">
+      <h2>The Woodland is Set</h2>
+      <p id="hand-total"></p>
+      <ul class="summary-list" id="hand-summary"></ul>
+      <h2>Before You Begin</h2>
+      <ul class="checklist">
+        <li>Standard setup: each player draws <b>three</b> cards <span class="law-ref">(two players: remove the four dominance cards first)</span></li>
+        <li>Using the Advanced Setup board steps instead? Draw <b>five</b>, and after setup keep three <span class="law-ref">(A.7, A.10)</span></li>
+      </ul>
+      <div class="btn-row">
+        <button class="btn secondary" id="hand-undo2">Undo last pick</button>
+        <button class="btn secondary" id="hand-reset2">New deal</button>
+      </div>
     </div>
   </section>
 </main>
@@ -393,6 +442,31 @@ const store = {
 let playerCount = store.count;
 let mode = "simple";
 const $ = sel => document.querySelector(sel);
+const shuffleArr = a => {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
+function renderNameInputs(wrap) {
+  wrap.innerHTML = "";
+  const names = store.names;
+  for (let i = 0; i < playerCount; i++) {
+    const label = document.createElement("label");
+    label.innerHTML = `<span class="seat">${i + 1}.</span>`;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = `Player ${i + 1}`;
+    input.value = names[i] || "";
+    input.addEventListener("input", () => {
+      const n = store.names; n[i] = input.value; store.names = n;
+    });
+    label.appendChild(input);
+    wrap.appendChild(label);
+  }
+}
 
 /* ---------------- tabs ---------------- */
 document.querySelectorAll("nav [role=tab]").forEach(btn => {
@@ -416,6 +490,9 @@ function setCount(v) {
   $("#pc-plus").disabled = playerCount >= 6;
   renderSimpleTracker();
   renderDraftSetup();
+  if (typeof hand !== "undefined") {
+    if (hand.phase !== "setup") resetHand(); else renderHand();
+  }
 }
 $("#pc-minus").addEventListener("click", () => setCount(playerCount - 1));
 $("#pc-plus").addEventListener("click", () => setCount(playerCount + 1));
@@ -551,23 +628,7 @@ function playerNames() {
 }
 
 function renderDraftSetup() {
-  // player name inputs
-  const wrap = $("#draft-players");
-  wrap.innerHTML = "";
-  const names = store.names;
-  for (let i = 0; i < playerCount; i++) {
-    const label = document.createElement("label");
-    label.innerHTML = `<span class="seat">${i + 1}.</span>`;
-    const input = document.createElement("input");
-    input.type = "text";
-    input.placeholder = `Player ${i + 1}`;
-    input.value = names[i] || "";
-    input.addEventListener("input", () => {
-      const n = store.names; n[i] = input.value; store.names = n;
-    });
-    label.appendChild(input);
-    wrap.appendChild(label);
-  }
+  renderNameInputs($("#draft-players"));
 
   // include/omit chips
   const chips = $("#draft-chips");
@@ -618,15 +679,13 @@ function dealDraft() {
     err.textContent = `Not enough factions in the pool: need ${playerCount + 1}, have ${cards.length}.`; return;
   }
 
-  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-
   // A.4 — random seating and first player
-  draft.seats = shuffle(playerNames().slice());
+  draft.seats = shuffleArr(playerNames().slice());
 
   // A.8.2 — one militant first, then one card per player from the rest
-  shuffle(militants);
+  shuffleArr(militants);
   const seed = militants.shift();
-  const rest = shuffle(militants.concat(others)).slice(0, playerCount);
+  const rest = shuffleArr(militants.concat(others)).slice(0, playerCount);
   draft.pool = [seed, ...rest].map(f => ({ faction: f, lockedInsurgent: false, takenBy: null }));
   const last = draft.pool[draft.pool.length - 1];
   if (last.faction.type === "insurgent") last.lockedInsurgent = true; // A.8.2.II
@@ -741,16 +800,194 @@ $("#undo-btn-done").addEventListener("click", undoPick);
 $("#redeal-btn").addEventListener("click", resetDraft);
 $("#redeal-btn-done").addEventListener("click", resetDraft);
 
+/* ================= HAND DRAFT MODE ================= */
+const hand = {
+  phase: "setup",   // setup | pass | pick | done
+  seats: [],        // names in turn order (index 0 = first player)
+  hands: [],        // hands[seatIndex] = array of faction ids, secret
+  pickQueue: [],    // seat indices in pick order (last player first)
+  picks: [],        // { seatIndex, factionId } in pick order
+};
+
+/* Can one faction per remaining hand still give reach ≥ target with a militant
+   at the table? Hands are tiny (≤3 cards, ≤6 hands), so brute force is fine. */
+function draftSolvable(hands, sum, hasMilitant, target) {
+  if (!hands.length) return hasMilitant && sum >= target;
+  const rest = hands.slice(1);
+  for (const id of hands[0]) {
+    const f = byId[id];
+    if (draftSolvable(rest, sum + f.reach, hasMilitant || f.type === "militant", target)) return true;
+  }
+  return false;
+}
+
+function handBlockReason(candidateId) {
+  const remaining = hand.pickQueue.slice(hand.picks.length + 1).map(si => hand.hands[si]);
+  const sum = hand.picks.reduce((s, p) => s + byId[p.factionId].reach, 0) + byId[candidateId].reach;
+  const militant = byId[candidateId].type === "militant" ||
+    hand.picks.some(p => byId[p.factionId].type === "militant");
+  const target = effTarget();
+  if (draftSolvable(remaining, sum, militant, target)) return null;
+  if (draftSolvable(remaining, sum, true, target)) return "Someone must still play a militant";
+  return `The table couldn’t reach ${target} reach`;
+}
+
+function dealHands() {
+  const K = playerCount >= 5 ? 2 : 3;
+  const drop = Math.random() < 0.5 ? "vagabond" : "knaves"; // never both in one game (A.8.1)
+  const deck0 = FACTIONS.filter(f => f.id !== "vagabond2" && f.id !== drop);
+  const target = effTarget();
+  for (let t = 0; t < 800; t++) {
+    const deck = shuffleArr(deck0.slice());
+    const hands = Array.from({ length: playerCount }, (_, i) =>
+      deck.slice(i * K, (i + 1) * K).map(f => f.id));
+    if (draftSolvable(hands, 0, false, target)) {
+      hand.hands = hands;
+      hand.seats = shuffleArr(playerNames().slice());
+      hand.pickQueue = Array.from({ length: playerCount }, (_, i) => playerCount - 1 - i);
+      hand.picks = [];
+      hand.phase = "pass";
+      renderHand();
+      return;
+    }
+  }
+  $("#hand-deal-error").textContent =
+    "Couldn’t deal hands that reach the total — try the adventurous toggle.";
+}
+
+function renderHandOrder() {
+  const ol = $("#hand-order-pass");
+  ol.innerHTML = "";
+  hand.seats.forEach((name, i) => {
+    const pick = hand.picks.find(p => p.seatIndex === i);
+    const isCurrent = i === hand.pickQueue[hand.picks.length];
+    const li = document.createElement("li");
+    li.className = (i === 0 ? "first " : "") + (isCurrent ? "current " : "") + (pick ? "done" : "");
+    li.innerHTML = `${i === 0 ? "★ " : ""}${name}
+      <span class="who">${pick ? byId[pick.factionId].name : (i === 0 ? "first player" : `turn ${i + 1}`)}</span>`;
+    ol.appendChild(li);
+  });
+}
+
+function renderHand() {
+  for (const p of ["setup", "pass", "pick", "done"])
+    $(`#hand-${p}`).classList.toggle("hidden", hand.phase !== p);
+
+  if (hand.phase === "setup") {
+    renderNameInputs($("#hand-players"));
+    $("#hand-size-note").textContent = playerCount >= 5 ? "two" : "three";
+    $("#hand-adventurous").checked = adventurous;
+    $("#hand-deal-error").textContent = "";
+    return;
+  }
+
+  if (hand.phase === "pass") {
+    renderHandOrder();
+    $("#hand-pass-name").textContent = hand.seats[hand.pickQueue[hand.picks.length]];
+    $("#hand-undo").disabled = !hand.picks.length;
+    return;
+  }
+
+  if (hand.phase === "pick") {
+    const seat = hand.pickQueue[hand.picks.length];
+    $("#hand-banner").innerHTML = `<b>${hand.seats[seat]}</b> — pick one faction.`;
+    const grid = $("#hand-grid");
+    grid.innerHTML = "";
+    for (const id of hand.hands[seat]) {
+      const f = byId[id];
+      const reason = handBlockReason(id);
+      const wrap = document.createElement("div");
+      const card = document.createElement("button");
+      card.className = "card" + (reason ? " dimmed" : "");
+      card.disabled = !!reason;
+      card.innerHTML = `<img src="${imgSrc(f)}" alt="${f.name} — ${f.type}">
+        <span class="reach-badge" title="Reach">${f.reach}</span>`;
+      card.addEventListener("click", () => {
+        hand.picks.push({ seatIndex: seat, factionId: id });
+        hand.phase = hand.picks.length === playerCount ? "done" : "pass";
+        renderHand();
+      });
+      wrap.appendChild(card);
+      if (reason) {
+        const note = document.createElement("p");
+        note.className = "pool-note";
+        note.textContent = reason;
+        wrap.appendChild(note);
+      }
+      grid.appendChild(wrap);
+    }
+    return;
+  }
+
+  renderHandDone();
+}
+
+function renderHandDone() {
+  const total = hand.picks.reduce((s, p) => s + byId[p.factionId].reach, 0);
+  const rec = REACH_TARGET[playerCount];
+  const cls = total >= rec ? "ok" : total >= 17 ? "adventurous" : "bad";
+  const label = total >= rec ? "good fit" : total >= 17 ? "adventurous (17+)" : "not enough reach";
+  $("#hand-total").innerHTML =
+    `Reach <b>${total}</b> / ${rec} recommended &nbsp;<span class="stamp ${cls}">${label}</span>`;
+
+  const ul = $("#hand-summary");
+  ul.innerHTML = "";
+  hand.seats.forEach((name, i) => {
+    const pick = hand.picks.find(p => p.seatIndex === i);
+    const f = byId[pick.factionId];
+    const passed = hand.hands[i].filter(id => id !== pick.factionId).map(id => byId[id].name);
+    const li = document.createElement("li");
+    li.innerHTML = `<img src="${imgSrc(f)}" alt="">
+      <div><div class="fac">${i === 0 ? "★ " : ""}${name} — ${f.name}</div>
+      <div class="sub">turn ${i + 1}${i === 0 ? " (first player)" : ""} · reach ${f.reach} · ${f.type}
+      · passed on ${passed.join(" and ")}</div></div>`;
+    ul.appendChild(li);
+  });
+  const dealt = new Set(hand.hands.flat());
+  const undealt = FACTIONS.filter(f => f.id !== "vagabond2" && !dealt.has(f.id)).map(f => f.name);
+  if (undealt.length) {
+    const li = document.createElement("li");
+    li.style.opacity = ".6";
+    li.innerHTML = `<div><div class="fac">Never dealt</div>
+      <div class="sub">${undealt.join(", ")} — return them to the box</div></div>`;
+    ul.appendChild(li);
+  }
+}
+
+function undoHand() {
+  if (!hand.picks.length) return;
+  hand.picks.pop();
+  hand.phase = "pass";
+  renderHand();
+}
+function resetHand() {
+  hand.hands = []; hand.picks = []; hand.phase = "setup";
+  renderHand();
+}
+
+$("#hand-deal-btn").addEventListener("click", dealHands);
+$("#hand-show-btn").addEventListener("click", () => { hand.phase = "pick"; renderHand(); });
+$("#hand-undo").addEventListener("click", undoHand);
+$("#hand-undo2").addEventListener("click", undoHand);
+$("#hand-reset").addEventListener("click", resetHand);
+$("#hand-reset2").addEventListener("click", resetHand);
+
 /* ---------------- init ---------------- */
-$("#adventurous-toggle").checked = adventurous;
-$("#adventurous-toggle").addEventListener("change", e => {
-  adventurous = e.target.checked;
-  localStorage.setItem("rp.adventurous", adventurous ? "1" : "0");
+function setAdventurous(v) {
+  adventurous = v;
+  localStorage.setItem("rp.adventurous", v ? "1" : "0");
+  $("#adventurous-toggle").checked = v;
+  $("#hand-adventurous").checked = v;
   updateSimple();
-});
+}
+$("#adventurous-toggle").addEventListener("change", e => setAdventurous(e.target.checked));
+$("#hand-adventurous").addEventListener("change", e => setAdventurous(e.target.checked));
+$("#adventurous-toggle").checked = adventurous;
+$("#hand-adventurous").checked = adventurous;
 setCount(playerCount);
 renderSimpleGrid();
 renderDraftSetup();
+renderHand();
 </script>
 </body>
 </html>

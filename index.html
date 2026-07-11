@@ -77,7 +77,7 @@
     nav button { flex: 0 0 auto; scroll-snap-align: start; white-space: nowrap; }
   }
   nav button:focus-visible, .btn:focus-visible, .card:focus-visible, .stepper button:focus-visible,
-  input:focus-visible, .chip:focus-visible {
+  input:focus-visible {
     outline: 3px solid var(--gold); outline-offset: 2px;
   }
 
@@ -85,7 +85,6 @@
   .stepper {
     display: flex; align-items: center; justify-content: center; gap: 14px; margin: 10px 0 18px;
   }
-  .stepper .label { font-variant: small-caps; letter-spacing: .06em; font-size: 1.05rem; }
   .stepper button {
     width: 40px; height: 40px; border-radius: 50%;
     border: 2px solid var(--ink); background: var(--paper); color: var(--ink);
@@ -94,11 +93,41 @@
   .stepper button:disabled { opacity: .35; cursor: default; }
   .stepper .count { font-size: 1.7rem; font-weight: 700; min-width: 1.4em; text-align: center; }
 
+  .view-toggle-row { display: flex; margin: 10px 0 18px; }
+  .link-btn {
+    font: inherit; font-variant: small-caps; letter-spacing: .04em; font-size: .85rem;
+    background: none; border: 1px solid var(--ink-soft); border-radius: 20px; color: var(--ink-soft);
+    padding: 4px 16px; cursor: pointer;
+  }
+  .link-btn:hover { color: var(--ink); border-color: var(--ink); }
+  .link-btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
   h2 {
     font-variant: small-caps; letter-spacing: .08em; font-size: 1.25rem;
     border-bottom: 1px solid var(--ink-soft); padding-bottom: 4px; margin: 26px 0 12px;
   }
   .note { color: var(--ink-soft); font-style: italic; font-size: .92rem; margin: 6px 0; }
+
+  /* ---------- collapsible explainer callouts ---------- */
+  details.explainer {
+    border: 1px solid var(--ink-soft); border-radius: 8px;
+    background: var(--paper-deep); margin: 10px 0 16px;
+  }
+  details.explainer summary {
+    cursor: pointer; list-style: none; user-select: none;
+    display: flex; align-items: center; gap: 7px;
+    font-variant: small-caps; letter-spacing: .05em; font-size: .9rem;
+    color: var(--ink-soft); padding: 8px 12px;
+  }
+  details.explainer summary::-webkit-details-marker { display: none; }
+  details.explainer summary::marker { content: ""; }
+  details.explainer summary:hover { color: var(--ink); }
+  details.explainer summary::before {
+    content: "▸"; display: inline-block; font-size: .7em;
+    transition: transform .15s ease;
+  }
+  details.explainer[open] summary::before { transform: rotate(90deg); }
+  details.explainer .note { margin: 0; padding: 0 12px 10px; }
 
   /* ---------- faction grid ---------- */
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
@@ -214,22 +243,6 @@
   .players-list label { display: flex; align-items: center; gap: 8px; font-size: .95rem; }
   .players-list .seat { color: var(--ink-soft); white-space: nowrap; }
 
-  /* ---------- draft pool chips (include/omit) ---------- */
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
-  .chip {
-    font: inherit; font-size: .9rem; cursor: pointer;
-    display: flex; align-items: center; gap: 6px;
-    border: 2px solid var(--ink-soft); border-radius: 20px; padding: 4px 12px 4px 6px;
-    background: var(--paper); color: var(--ink-soft);
-  }
-  .chip img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; object-position: 50% 20%; filter: grayscale(1); }
-  .chip.on { border-color: var(--ink); color: var(--ink); background: #fff8e4; }
-  .chip.on img { filter: none; }
-  .chip:disabled { opacity: .4; cursor: not-allowed; }
-  .chip .t { font-size: .72rem; font-variant: small-caps; padding: 0 5px; border-radius: 4px; color: #fff; }
-  .chip .t.militant { background: var(--militant); }
-  .chip .t.insurgent { background: var(--insurgent); }
-
   /* ---------- draft board ---------- */
   .order-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; padding: 0; list-style: none; }
   .order-list li {
@@ -326,6 +339,32 @@
   }
   .card.selected .rank-badge { background: var(--gold); }
 
+  /* ---------- optional compact list view ---------- */
+  body.list-view .grid { grid-template-columns: 1fr; gap: 8px; }
+  body.list-view .card { flex-direction: row; align-items: stretch; text-align: left; }
+  body.list-view .card-media { width: 62px; height: 62px; flex: 0 0 62px; aspect-ratio: unset; }
+  body.list-view .card-name {
+    flex: 1 1 auto; flex-direction: row; align-items: center; justify-content: space-between;
+    margin-top: 0; border-top: none; border-left: 1px solid var(--ink-soft); gap: 10px; padding: 6px 12px;
+  }
+  body.list-view .card-name .fname {
+    min-height: 0; font-size: .88rem;
+    display: block; -webkit-line-clamp: unset; overflow: visible; white-space: normal;
+  }
+  body.list-view .reach-badge {
+    width: 22px; height: 22px; font-size: .68rem; top: 2px; right: 2px; border-width: 1px;
+  }
+  body.list-view .corner-tag { font-size: .5rem; padding: 0 3px; top: 2px; left: 2px; }
+  body.list-view .lock-badge { font-size: .55rem; padding: 4px; }
+  body.list-view .card.selected .card-media::after {
+    width: 22px; height: 22px; font-size: .8rem; line-height: 22px; bottom: 2px; right: 2px;
+  }
+  body.list-view .card.selected-ban .card-media::after {
+    width: 22px; height: 22px; font-size: .75rem; line-height: 22px; bottom: 2px; right: 2px;
+  }
+  body.list-view .rank-badge { top: 2px; left: 2px; font-size: .68rem; padding: 0 5px; }
+  body.list-view .taken-by { font-size: .68rem; padding: 2px 4px; }
+
   .placeholder-box {
     border: 2px dashed var(--ink-soft); border-radius: 12px; padding: 24px; text-align: center;
     color: var(--ink-soft); font-style: italic; margin-top: 20px;
@@ -354,20 +393,22 @@
     <button role="tab" aria-selected="false" data-mode="cut">Cut &amp; Choose</button>
     <button role="tab" aria-selected="false" data-mode="tt">Teaching Tiers</button>
     <button role="tab" aria-selected="false" data-mode="wish">Wishlist</button>
-    <button role="tab" aria-selected="false" data-mode="settings">My Factions</button>
+    <button role="tab" aria-selected="false" data-mode="settings">Settings</button>
   </nav>
-
-  <div class="stepper" id="player-stepper">
-    <span class="label">Players</span>
-    <button id="pc-minus" aria-label="Fewer players">−</button>
-    <span class="count" id="pc-count">4</span>
-    <button id="pc-plus" aria-label="More players">+</button>
-  </div>
 
   <!-- ============ SIMPLE MODE ============ -->
   <section id="mode-simple">
-    <p class="note">Everyone picks freely. The Law asks the chosen factions’ reach to add up to the
-      recommended total for your player count (Law 5.2). Any mix of 17+ is allowed for adventurous groups.</p>
+    <h2 id="ps-simple">Players</h2>
+    <div class="stepper" id="player-stepper" aria-label="Player count">
+      <button id="pc-minus" aria-label="Fewer players">−</button>
+      <span class="count" id="pc-count">4</span>
+      <button id="pc-plus" aria-label="More players">+</button>
+    </div>
+    <details class="explainer" id="exp-simple">
+      <summary>How this works</summary>
+      <p class="note">Everyone picks freely. The Law asks the chosen factions’ reach to add up to the
+        recommended total for your player count (Law 5.2). Any mix of 17+ is allowed for adventurous groups.</p>
+    </details>
     <label class="note" style="display:block">
       <input type="checkbox" id="adventurous-toggle">
       Adventurous group — allow any mix that reaches 17+
@@ -379,14 +420,10 @@
   <section id="mode-draft" class="hidden">
 
     <div id="draft-setup">
-      <h2>Players &amp; Seats <span class="law-ref">(A.4)</span></h2>
+      <h2 id="ps-draft">Players &amp; Seats <span class="law-ref">(A.4)</span></h2>
       <p class="note">Names are optional. Seating order and first player are randomized when you deal.</p>
       <div class="players-list" id="draft-players"></div>
 
-      <h2>Draft Pool <span class="law-ref">(A.8.1)</span></h2>
-      <p class="note">Tap to omit factions you don’t own or don’t want. The Vagabond and the Knaves of the
-        Deepwood cannot both be included.</p>
-      <div class="chips" id="draft-chips"></div>
       <p class="note" id="two-player-note"></p>
       <label class="note" id="keep-insurgents-wrap" style="display:block">
         <input type="checkbox" id="keep-insurgents">
@@ -404,8 +441,11 @@
       <ul class="order-list" id="turn-order"></ul>
 
       <h2>Draft Pool <span class="law-ref">(A.8.2)</span></h2>
-      <p class="note">One militant was dealt first, then one card per player. Picks go from the last player
-        in turn order, backwards. Set up your faction immediately when you pick (A.8.3).</p>
+      <details class="explainer" id="exp-draft-board">
+        <summary>How this works</summary>
+        <p class="note">One militant was dealt first, then one card per player. Picks go from the last player
+          in turn order, backwards. Set up your faction immediately when you pick (A.8.3).</p>
+      </details>
       <div class="picker-banner" id="picker-banner"></div>
       <div class="grid" id="pool-grid"></div>
 
@@ -435,15 +475,18 @@
   <section id="mode-hand" class="hidden">
 
     <div id="hand-setup">
-      <h2>Players &amp; Seats</h2>
+      <h2 id="ps-hand">Players &amp; Seats</h2>
       <p class="note">Names are optional. Seating order and first player are randomized when you deal.</p>
       <div class="players-list" id="hand-players"></div>
 
       <h2>Deal</h2>
-      <p class="note">Each player gets a secret hand of <span id="hand-size-note">three</span> factions and picks
-        one, passing the device around. Hands are dealt so the table can always reach the required total and
-        field at least one militant. The Second Vagabond sits out, and either the Vagabond or the Knaves is
-        randomly left out of the deck (A.8.1).</p>
+      <details class="explainer" id="exp-hand-deal">
+        <summary>How this works</summary>
+        <p class="note">Each player gets a secret hand of <span id="hand-size-note">three</span> factions and picks
+          one, passing the device around. Hands are dealt so the table can always reach the required total and
+          field at least one militant. The Second Vagabond sits out, and either the Vagabond or the Knaves is
+          randomly left out of the deck (A.8.1).</p>
+      </details>
       <label class="note" style="display:block">
         <input type="checkbox" id="hand-adventurous">
         Adventurous group — allow any mix that reaches 17+
@@ -493,17 +536,19 @@
   <section id="mode-fav" class="hidden">
 
     <div id="fav-setup">
-      <h2>Players &amp; Seats</h2>
+      <h2 id="ps-fav">Players &amp; Seats</h2>
       <p class="note">Names are optional. Seating order and first player are randomized when you start.</p>
       <div class="players-list" id="fav-players"></div>
 
-      <h2>How It Works</h2>
-      <p class="note">In secret, each player either <b>♥ favorites</b> one faction (it’s locked to them) or
-        <b>✖ bans</b> one (nobody can play it). Then everything is revealed: bans trump favorites, and if two
-        players favorited the same faction it stays in the pool and both choose again — new bans allowed.
-        Repeat until settled. Players who banned get a random faction from what survives, rolled so the table
-        makes its reach total with at least one militant. The Second Vagabond sits out, and the Vagabond and
-        Knaves can never both end up in play (A.8.1).</p>
+      <details class="explainer" id="exp-fav">
+        <summary>How It Works</summary>
+        <p class="note">In secret, each player either <b>♥ favorites</b> one faction (it’s locked to them) or
+          <b>✖ bans</b> one (nobody can play it). Then everything is revealed: bans trump favorites, and if two
+          players favorited the same faction it stays in the pool and both choose again — new bans allowed.
+          Repeat until settled. Players who banned get a random faction from what survives, rolled so the table
+          makes its reach total with at least one militant. The Second Vagabond sits out, and the Vagabond and
+          Knaves can never both end up in play (A.8.1).</p>
+      </details>
       <label class="note" style="display:block">
         <input type="checkbox" id="fav-adventurous">
         Adventurous group — allow any mix that reaches 17+
@@ -564,13 +609,16 @@
   <section id="mode-cut" class="hidden">
 
     <div id="cut-setup">
-      <h2>Players &amp; Seats</h2>
+      <h2 id="ps-cut">Players &amp; Seats</h2>
       <p class="note">Names are optional. Seating order, first player, and the Warden are randomized when you start.</p>
       <div class="players-list" id="cut-players"></div>
-      <p class="note">One randomly chosen player is the <b>Warden</b>. They build a lineup of exactly as many
-        factions as there are players, meeting the reach total. Then everyone else picks one from the lineup,
-        in turn order — and the Warden plays whatever’s left. Classic cut-and-choose: the fairest lineup is
-        one the Warden would be happy to end up with.</p>
+      <details class="explainer" id="exp-cut">
+        <summary>How this works</summary>
+        <p class="note">One randomly chosen player is the <b>Warden</b>. They build a lineup of exactly as many
+          factions as there are players, meeting the reach total. Then everyone else picks one from the lineup,
+          in turn order — and the Warden plays whatever’s left. Classic cut-and-choose: the fairest lineup is
+          one the Warden would be happy to end up with.</p>
+      </details>
       <label class="note" style="display:block">
         <input type="checkbox" id="cut-adventurous">
         Adventurous group — allow any mix that reaches 17+
@@ -619,13 +667,16 @@
   <section id="mode-tt" class="hidden">
 
     <div id="tt-setup">
-      <h2>Players &amp; Experience</h2>
+      <h2 id="ps-tt">Players &amp; Experience</h2>
       <p class="note">Names are optional. Tag each player <b>New</b>, <b>Comfortable</b>, or <b>Expert</b>.
         Seating order and first player are randomized when you start.</p>
       <div id="tt-players"></div>
-      <p class="note">The app builds one lineup with enough beginner-friendly factions for your New players
-        and enough moderate ones for your Comfortable players, then everyone picks — New players choose
-        first from the easy end, Experts pick last from whatever’s left.</p>
+      <details class="explainer" id="exp-tt">
+        <summary>How this works</summary>
+        <p class="note">The app builds one lineup with enough beginner-friendly factions for your New players
+          and enough moderate ones for your Comfortable players, then everyone picks — New players choose
+          first from the easy end, Experts pick last from whatever’s left.</p>
+      </details>
       <label class="note" style="display:block">
         <input type="checkbox" id="tt-adventurous">
         Adventurous group — allow any mix that reaches 17+
@@ -667,14 +718,17 @@
   <section id="mode-wish" class="hidden">
 
     <div id="wish-setup">
-      <h2>Players &amp; Seats</h2>
+      <h2 id="ps-wish">Players &amp; Seats</h2>
       <p class="note">Names are optional. Seating order and first player are randomized when you start.</p>
       <div class="players-list" id="wish-players"></div>
-      <p class="note">Everyone secretly ranks their top <b>3</b> factions, 1st to 3rd choice. The app then
-        checks every reach-safe combination of factions and picks whichever assignment makes the table
-        happiest overall (1st choice worth 3 points, 2nd worth 2, 3rd worth 1) — nobody sees the others’
-        picks until the reveal. If someone ends up with none of their three, the reveal suggests giving
-        them a +1 VP head start — a house rule, not from the Law, so use it or skip it as you like.</p>
+      <details class="explainer" id="exp-wish">
+        <summary>How this works</summary>
+        <p class="note">Everyone secretly ranks their top <b>3</b> factions, 1st to 3rd choice. The app then
+          checks every reach-safe combination of factions and picks whichever assignment makes the table
+          happiest overall (1st choice worth 3 points, 2nd worth 2, 3rd worth 1) — nobody sees the others’
+          picks until the reveal. If someone ends up with none of their three, the reveal suggests giving
+          them a +1 VP head start — a house rule, not from the Law, so use it or skip it as you like.</p>
+      </details>
       <label class="note" style="display:block">
         <input type="checkbox" id="wish-adventurous">
         Adventurous group — allow any mix that reaches 17+
@@ -719,6 +773,12 @@
 
   <!-- ============ SETTINGS ============ -->
   <section id="mode-settings" class="hidden">
+    <h2>Display</h2>
+    <p class="note">Switch between full art cards and a compact list — the list scans faster on a phone.</p>
+    <div class="view-toggle-row">
+      <button id="view-toggle" class="link-btn" aria-pressed="false"></button>
+    </div>
+
     <h2>Your Collection</h2>
     <p class="note">Uncheck anything you don’t own. Every mode above deals only from what’s checked
       here — stored on this device, nowhere else.</p>
@@ -839,6 +899,14 @@ function renderNameInputs(wrap) {
 }
 
 /* ---------------- tabs ---------------- */
+const PLAYERS_HEADING = {
+  simple: "ps-simple", draft: "ps-draft", hand: "ps-hand", fav: "ps-fav",
+  cut: "ps-cut", tt: "ps-tt", wish: "ps-wish",
+};
+function placePlayerStepper(mode) {
+  const headingId = PLAYERS_HEADING[mode];
+  if (headingId) $(`#${headingId}`).insertAdjacentElement("afterend", $("#player-stepper"));
+}
 document.querySelectorAll("nav [role=tab]").forEach(btn => {
   btn.addEventListener("click", () => {
     mode = btn.dataset.mode;
@@ -847,9 +915,32 @@ document.querySelectorAll("nav [role=tab]").forEach(btn => {
     for (const m of ["simple", "draft", "hand", "fav", "cut", "tt", "wish", "settings"])
       $(`#mode-${m}`).classList.toggle("hidden", m !== mode);
     $("#tracker").classList.toggle("hidden", mode !== "simple");
-    $("#player-stepper").classList.toggle("hidden", mode === "settings");
+    placePlayerStepper(mode);
     document.body.style.paddingBottom = mode === "simple" ? "" : "0";
   });
+});
+
+/* ---------------- card / list view toggle ---------------- */
+let viewMode = localStorage.getItem("rp.view") === "list" ? "list" : "grid";
+function applyViewMode() {
+  document.body.classList.toggle("list-view", viewMode === "list");
+  const btn = $("#view-toggle");
+  btn.setAttribute("aria-pressed", viewMode === "list");
+  btn.textContent = viewMode === "list" ? "▦ Card view" : "☰ List view";
+}
+$("#view-toggle").addEventListener("click", () => {
+  viewMode = viewMode === "list" ? "grid" : "list";
+  localStorage.setItem("rp.view", viewMode);
+  applyViewMode();
+});
+applyViewMode();
+
+/* ---------------- collapsible explainers ---------------- */
+document.querySelectorAll("details.explainer").forEach(d => {
+  const key = "rp.exp." + d.id;
+  const stored = localStorage.getItem(key);
+  d.open = stored === null ? true : stored === "1";
+  d.addEventListener("toggle", () => localStorage.setItem(key, d.open ? "1" : "0"));
 });
 
 /* ---------------- player count stepper ---------------- */
@@ -1035,7 +1126,6 @@ function renderSimpleTracker() {
 
 /* ================= ADVANCED DRAFT MODE ================= */
 const draft = {
-  included: new Set(availableFactions().map(f => f.id).filter(id => id !== "knaves" && id !== "vagabond2")),
   seats: [],        // player names in turn order (index 0 = first player)
   pool: [],         // { faction, lockedInsurgent, takenBy }
   pickQueue: [],    // seat indices in pick order
@@ -1050,37 +1140,6 @@ function playerNames() {
 
 function renderDraftSetup() {
   renderNameInputs($("#draft-players"));
-  draft.included = new Set([...draft.included].filter(id => availableFactions().some(f => f.id === id)));
-
-  // include/omit chips
-  const chips = $("#draft-chips");
-  chips.innerHTML = "";
-  for (const f of availableFactions()) {
-    const chip = document.createElement("button");
-    chip.className = "chip" + (draft.included.has(f.id) ? " on" : "");
-    chip.setAttribute("aria-pressed", draft.included.has(f.id));
-    chip.innerHTML = `<img src="${imgSrc(f)}" alt=""> ${f.name} <span class="t ${f.type}">${f.type[0].toUpperCase() + f.type.slice(1)}</span>`;
-    const conflict =
-      (f.id === "knaves" && draft.included.has("vagabond")) ||
-      ((f.id === "vagabond" || f.id === "vagabond2") && draft.included.has("knaves")) ||
-      (f.id === "vagabond2" && !draft.included.has("vagabond"));
-    if (conflict && !draft.included.has(f.id)) {
-      chip.disabled = true;
-      chip.title = f.id === "vagabond2"
-        ? "Include the Vagabond first"
-        : "Vagabond and Knaves cannot both be included (A.8.1)";
-    }
-    chip.addEventListener("click", () => {
-      if (draft.included.has(f.id)) {
-        draft.included.delete(f.id);
-        if (f.id === "vagabond") draft.included.delete("vagabond2");
-      } else {
-        draft.included.add(f.id);
-      }
-      renderDraftSetup();
-    });
-    chips.appendChild(chip);
-  }
 
   $("#two-player-note").textContent = playerCount === 2
     ? "Two players: all insurgent setup cards are removed before dealing (A.8.2.I)." : "";
@@ -1090,7 +1149,8 @@ function renderDraftSetup() {
 
 function dealDraft() {
   const keepInsurgents = playerCount !== 2 || $("#keep-insurgents").checked;
-  let cards = availableFactions().filter(f => draft.included.has(f.id));
+  const drop = Math.random() < 0.5 ? "vagabond" : "knaves"; // never both in one game (A.8.1)
+  let cards = availableFactions().filter(f => f.id !== "vagabond2" && f.id !== drop);
   if (!keepInsurgents) cards = cards.filter(f => f.type === "militant");
 
   const militants = cards.filter(f => f.type === "militant");
@@ -2321,6 +2381,7 @@ renderCut();
 renderTT();
 renderWish();
 renderSettingsGrid();
+placePlayerStepper(mode);
 </script>
 </body>
 </html>

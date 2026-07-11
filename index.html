@@ -82,6 +82,7 @@
   /* ---------- faction grid ---------- */
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
   .card {
+    display: flex; flex-direction: column;
     position: relative; border: 2px solid var(--ink); border-radius: 10px;
     background: var(--paper); cursor: pointer; padding: 0; overflow: hidden;
     font: inherit; color: inherit; text-align: center;
@@ -89,7 +90,25 @@
     box-shadow: 0 1px 3px rgba(58,46,28,.25);
   }
   .card:hover { transform: translateY(-2px); box-shadow: 0 4px 9px rgba(58,46,28,.3); }
-  .card img { display: block; width: 100%; height: auto; }
+  .card-media { position: relative; aspect-ratio: 1 / 1; overflow: hidden; background: var(--paper); }
+  .card img { display: block; width: 100%; height: 100%; object-fit: contain; }
+  .card .card-name {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+    margin-top: auto;
+    padding: 7px 9px 8px; border-top: 1px solid var(--ink-soft); text-align: left;
+    background: var(--paper-deep);
+  }
+  .card .card-name .fname {
+    font-variant: small-caps; letter-spacing: .02em; font-weight: 700;
+    font-size: .84rem; line-height: 1.2; min-height: 2.4em;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .card .card-name .t {
+    flex: 0 0 auto; font-size: .64rem; font-variant: small-caps; letter-spacing: .04em;
+    padding: 1px 7px; border-radius: 4px; border: 1px solid currentColor; background: none;
+  }
+  .card .card-name .t.militant { color: var(--militant); }
+  .card .card-name .t.insurgent { color: var(--insurgent); }
   .card .reach-badge {
     position: absolute; top: 6px; right: 6px;
     width: 34px; height: 34px; border-radius: 50%;
@@ -105,7 +124,7 @@
     padding: 1px 5px; color: var(--ink-soft);
   }
   .card.selected { border-color: var(--moss); box-shadow: 0 0 0 3px var(--moss), 0 3px 8px rgba(58,46,28,.3); }
-  .card.selected::after {
+  .card.selected .card-media::after {
     content: "✓"; position: absolute; bottom: 6px; right: 8px;
     width: 30px; height: 30px; border-radius: 50%;
     background: var(--moss); color: var(--paper);
@@ -240,7 +259,7 @@
   .kind-toggle button.fav[aria-pressed="true"] { border-color: var(--moss); color: var(--moss); font-weight: 700; }
   .kind-toggle button.ban[aria-pressed="true"] { border-color: var(--danger); color: var(--danger); font-weight: 700; }
   .card.selected-ban { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger), 0 3px 8px rgba(58,46,28,.3); }
-  .card.selected-ban::after {
+  .card.selected-ban .card-media::after {
     content: "✖"; position: absolute; bottom: 6px; right: 8px;
     width: 30px; height: 30px; border-radius: 50%;
     background: var(--danger); color: var(--paper);
@@ -306,9 +325,10 @@
     <button role="tab" aria-selected="false" data-mode="cut">Cut &amp; Choose</button>
     <button role="tab" aria-selected="false" data-mode="tt">Teaching Tiers</button>
     <button role="tab" aria-selected="false" data-mode="wish">Wishlist</button>
+    <button role="tab" aria-selected="false" data-mode="settings">My Factions</button>
   </nav>
 
-  <div class="stepper">
+  <div class="stepper" id="player-stepper">
     <span class="label">Players</span>
     <button id="pc-minus" aria-label="Fewer players">−</button>
     <span class="count" id="pc-count">4</span>
@@ -667,6 +687,18 @@
       </div>
     </div>
   </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section id="mode-settings" class="hidden">
+    <h2>Your Collection</h2>
+    <p class="note">Uncheck anything you don’t own. Every mode above deals only from what’s checked
+      here — stored on this device, nowhere else.</p>
+    <div class="btn-row">
+      <button class="btn secondary" id="own-all">Select all</button>
+      <button class="btn secondary" id="own-none">Select none</button>
+    </div>
+    <div class="grid" id="owned-grid"></div>
+  </section>
 </main>
 
 <!-- sticky reach tracker (simple mode only) -->
@@ -716,6 +748,15 @@ const FACTIONS = [
 ];
 const byId = Object.fromEntries(FACTIONS.map(f => [f.id, f]));
 const imgSrc = f => `assets/factions/${f.img || f.id}.png`;
+const cardMediaHTML = (f, extras = "") => `
+  <div class="card-media">
+    <img src="${imgSrc(f)}" alt="${f.name} — ${f.type}">
+    ${extras}
+  </div>
+  <div class="card-name">
+    <span class="fname">${f.name}</span>
+    <span class="t ${f.type}">${f.type[0].toUpperCase() + f.type.slice(1)}</span>
+  </div>`;
 const REACH_TARGET = { 2:17, 3:18, 4:21, 5:25, 6:28 };
 const TRACK_MAX = 32;
 
@@ -725,7 +766,20 @@ const store = {
   set count(v) { localStorage.setItem("rp.count", v); },
   get names() { try { return JSON.parse(localStorage.getItem("rp.names")) || []; } catch { return []; } },
   set names(v) { localStorage.setItem("rp.names", JSON.stringify(v)); },
+  get owned() {
+    const raw = localStorage.getItem("rp.owned");
+    if (raw === null) return new Set(FACTIONS.filter(f => f.id !== "vagabond2").map(f => f.id));
+    try { return new Set(JSON.parse(raw)); }
+    catch { return new Set(FACTIONS.filter(f => f.id !== "vagabond2").map(f => f.id)); }
+  },
+  set owned(v) { localStorage.setItem("rp.owned", JSON.stringify([...v])); },
 };
+/* Real factions the table can actually deal from, per the Settings page.
+   vagabond2 tags along with vagabond since it's the same box's second character deck, not a separate purchase. */
+function availableFactions() {
+  const owned = store.owned;
+  return FACTIONS.filter(f => owned.has(f.id === "vagabond2" ? "vagabond" : f.id));
+}
 let playerCount = store.count;
 let mode = "simple";
 const $ = sel => document.querySelector(sel);
@@ -761,9 +815,10 @@ document.querySelectorAll("nav [role=tab]").forEach(btn => {
     mode = btn.dataset.mode;
     document.querySelectorAll("nav [role=tab]").forEach(b =>
       b.setAttribute("aria-selected", b === btn ? "true" : "false"));
-    for (const m of ["simple", "draft", "hand", "fav", "cut", "tt", "wish"])
+    for (const m of ["simple", "draft", "hand", "fav", "cut", "tt", "wish", "settings"])
       $(`#mode-${m}`).classList.toggle("hidden", m !== mode);
     $("#tracker").classList.toggle("hidden", mode !== "simple");
+    $("#player-stepper").classList.toggle("hidden", mode === "settings");
     document.body.style.paddingBottom = mode === "simple" ? "" : "0";
   });
 });
@@ -788,6 +843,52 @@ function setCount(v) {
 $("#pc-minus").addEventListener("click", () => setCount(playerCount - 1));
 $("#pc-plus").addEventListener("click", () => setCount(playerCount + 1));
 
+/* ---------------- owned-factions settings ---------------- */
+function applyOwnedChange() {
+  const avail = new Set(availableFactions().map(f => f.id));
+  for (const id of [...selected]) if (!avail.has(id)) selected.delete(id);
+  renderSimpleGrid();
+  renderDraftSetup();
+  if (typeof hand !== "undefined") {
+    if (hand.phase !== "setup") resetHand(); else renderHand();
+    if (fav.phase !== "setup") resetFav(); else renderFav();
+    if (cut.phase !== "setup") resetCut(); else renderCut();
+    if (tt.phase !== "setup") resetTT(); else renderTT();
+    if (wish.phase !== "setup") resetWish(); else renderWish();
+  }
+}
+function renderSettingsGrid() {
+  const owned = store.owned;
+  const grid = $("#owned-grid");
+  grid.innerHTML = "";
+  for (const f of FACTIONS) {
+    if (f.id === "vagabond2") continue;
+    const has = owned.has(f.id);
+    const card = document.createElement("button");
+    card.className = "card" + (has ? "" : " locked");
+    card.setAttribute("aria-pressed", has);
+    card.innerHTML = cardMediaHTML(f, has ? "" : '<span class="lock-badge">Not owned — tap to include</span>');
+    card.addEventListener("click", () => {
+      const o = store.owned;
+      if (o.has(f.id)) o.delete(f.id); else o.add(f.id);
+      store.owned = o;
+      applyOwnedChange();
+      renderSettingsGrid();
+    });
+    grid.appendChild(card);
+  }
+}
+$("#own-all").addEventListener("click", () => {
+  store.owned = new Set(FACTIONS.filter(f => f.id !== "vagabond2").map(f => f.id));
+  applyOwnedChange();
+  renderSettingsGrid();
+});
+$("#own-none").addEventListener("click", () => {
+  store.owned = new Set();
+  applyOwnedChange();
+  renderSettingsGrid();
+});
+
 /* ================= SIMPLE MODE ================= */
 const selected = new Set();
 let adventurous = localStorage.getItem("rp.adventurous") === "1";
@@ -796,15 +897,14 @@ const effTarget = () => adventurous ? 17 : REACH_TARGET[playerCount];
 function renderSimpleGrid() {
   const grid = $("#simple-grid");
   grid.innerHTML = "";
-  for (const f of FACTIONS) {
+  for (const f of availableFactions()) {
     const card = document.createElement("button");
     card.className = "card";
     card.dataset.id = f.id;
     card.setAttribute("aria-pressed", selected.has(f.id));
-    card.innerHTML = `
-      <img src="${imgSrc(f)}" alt="${f.name} — ${f.type}">
+    card.innerHTML = cardMediaHTML(f, `
       <span class="reach-badge" title="Reach">${f.reach}</span>
-      ${f.corner ? '<span class="corner-tag" title="Starts in a corner clearing">corner</span>' : ""}`;
+      ${f.corner ? '<span class="corner-tag" title="Starts in a corner clearing">corner</span>' : ""}`);
     card.addEventListener("click", () => toggleFaction(f.id));
     grid.appendChild(card);
   }
@@ -831,7 +931,7 @@ function reachBlockReason(sel, id, capacity) {
     return "The Vagabond and the Knaves cannot both be in the same game (A.8.1)";
   const slots = capacity - S.size;
   if (slots < 0) return `You already have ${capacity} factions — deselect one first`;
-  let pool = FACTIONS.filter(f => !S.has(f.id));
+  let pool = availableFactions().filter(f => !S.has(f.id));
   if (S.has("knaves")) pool = pool.filter(f => f.id !== "vagabond" && f.id !== "vagabond2");
   if (!S.has("vagabond") && !pool.some(f => f.id === "vagabond"))
     pool = pool.filter(f => f.id !== "vagabond2");
@@ -906,7 +1006,7 @@ function renderSimpleTracker() {
 
 /* ================= ADVANCED DRAFT MODE ================= */
 const draft = {
-  included: new Set(FACTIONS.map(f => f.id).filter(id => id !== "knaves" && id !== "vagabond2")),
+  included: new Set(availableFactions().map(f => f.id).filter(id => id !== "knaves" && id !== "vagabond2")),
   seats: [],        // player names in turn order (index 0 = first player)
   pool: [],         // { faction, lockedInsurgent, takenBy }
   pickQueue: [],    // seat indices in pick order
@@ -921,11 +1021,12 @@ function playerNames() {
 
 function renderDraftSetup() {
   renderNameInputs($("#draft-players"));
+  draft.included = new Set([...draft.included].filter(id => availableFactions().some(f => f.id === id)));
 
   // include/omit chips
   const chips = $("#draft-chips");
   chips.innerHTML = "";
-  for (const f of FACTIONS) {
+  for (const f of availableFactions()) {
     const chip = document.createElement("button");
     chip.className = "chip" + (draft.included.has(f.id) ? " on" : "");
     chip.setAttribute("aria-pressed", draft.included.has(f.id));
@@ -960,7 +1061,7 @@ function renderDraftSetup() {
 
 function dealDraft() {
   const keepInsurgents = playerCount !== 2 || $("#keep-insurgents").checked;
-  let cards = FACTIONS.filter(f => draft.included.has(f.id));
+  let cards = availableFactions().filter(f => draft.included.has(f.id));
   if (!keepInsurgents) cards = cards.filter(f => f.type === "militant");
 
   const militants = cards.filter(f => f.type === "militant");
@@ -1029,11 +1130,10 @@ function renderDraft() {
     const card = document.createElement("button");
     card.className = "card" + (locked ? " locked" : "") + (slot.takenBy ? " taken" : "");
     card.disabled = locked || !!slot.takenBy;
-    card.innerHTML = `
-      <img src="${imgSrc(f)}" alt="${f.name} — ${f.type}">
+    card.innerHTML = cardMediaHTML(f, `
       <span class="reach-badge" title="Reach">${f.reach}</span>
       ${locked ? '<span class="lock-badge"><span class="padlock">🔒</span>locked until a militant is chosen (A.8.2.II)</span>' : ""}
-      ${slot.takenBy ? `<span class="taken-by">${slot.takenBy}</span>` : ""}`;
+      ${slot.takenBy ? `<span class="taken-by">${slot.takenBy}</span>` : ""}`);
     card.addEventListener("click", () => {
       slot.takenBy = draft.seats[currentPicker()];
       draft.picks.push({ seatIndex: currentPicker(), poolIndex: idx });
@@ -1143,7 +1243,7 @@ function strongOk(handsQ, qi, sum, mil, target, memo) {
 function dealHands() {
   const K = playerCount >= 5 ? 2 : 3;
   const drop = Math.random() < 0.5 ? "vagabond" : "knaves"; // never both in one game (A.8.1)
-  const deck0 = FACTIONS.filter(f => f.id !== "vagabond2" && f.id !== drop);
+  const deck0 = availableFactions().filter(f => f.id !== "vagabond2" && f.id !== drop);
   const target = effTarget();
   // First hunt for a deal where every player is guaranteed a real choice
   // (two or more legal cards) whatever happens; settle for merely solvable.
@@ -1225,8 +1325,7 @@ function renderHand() {
       const f = byId[id];
       const card = document.createElement("button");
       card.className = "card";
-      card.innerHTML = `<img src="${imgSrc(f)}" alt="${f.name} — ${f.type}">
-        <span class="reach-badge" title="Reach">${f.reach}</span>`;
+      card.innerHTML = cardMediaHTML(f, `<span class="reach-badge" title="Reach">${f.reach}</span>`);
       card.addEventListener("click", () => {
         hand.picks.push({ seatIndex: seat, factionId: id });
         hand.phase = hand.picks.length === playerCount ? "done" : "pass";
@@ -1266,7 +1365,7 @@ function renderHandDone() {
     ul.appendChild(li);
   });
   const dealt = new Set(hand.hands.flat());
-  const undealt = FACTIONS.filter(f => f.id !== "vagabond2" && !dealt.has(f.id)).map(f => f.name);
+  const undealt = availableFactions().filter(f => f.id !== "vagabond2" && !dealt.has(f.id)).map(f => f.name);
   if (undealt.length) {
     const li = document.createElement("li");
     li.style.opacity = ".6";
@@ -1360,7 +1459,7 @@ function favBlockReason(kind, id) {
 
 function startFav() {
   fav.seats = shuffleArr(playerNames().slice());
-  fav.pool = FACTIONS.filter(f => f.id !== "vagabond2").map(f => f.id);
+  fav.pool = availableFactions().filter(f => f.id !== "vagabond2").map(f => f.id);
   fav.banned = []; fav.locked = []; fav.assigned = []; fav.log = [];
   fav.pending = Array.from({ length: playerCount }, (_, i) => i);
   fav.choiceIdx = 0; fav.choices = []; fav.round = 1;
@@ -1509,8 +1608,7 @@ function renderFav() {
         (fav.pickId === id ? (fav.pickKind === "ban" ? " selected-ban" : " selected") : "") +
         (reason ? " dimmed" : "");
       card.disabled = !!reason;
-      card.innerHTML = `<img src="${imgSrc(f)}" alt="${f.name} — ${f.type}">
-        <span class="reach-badge" title="Reach">${f.reach}</span>`;
+      card.innerHTML = cardMediaHTML(f, `<span class="reach-badge" title="Reach">${f.reach}</span>`);
       card.addEventListener("click", () => { fav.pickId = id; renderFav(); });
       wrap.appendChild(card);
       if (reason) {
@@ -1636,7 +1734,7 @@ function renderCutBuild() {
 
   const grid = $("#cut-build-grid");
   grid.innerHTML = "";
-  for (const f of FACTIONS) {
+  for (const f of availableFactions()) {
     if (f.id === "vagabond2" && !cut.lineup.has("vagabond")) continue;
     const isSel = cut.lineup.has(f.id);
     const reason = isSel ? null : reachBlockReason(cut.lineup, f.id, playerCount);
@@ -1644,9 +1742,9 @@ function renderCutBuild() {
     card.className = "card" + (isSel ? " selected" : "") + (reason ? " dimmed" : "");
     card.disabled = !!reason;
     card.title = reason || "";
-    card.innerHTML = `<img src="${imgSrc(f)}" alt="${f.name} — ${f.type}">
+    card.innerHTML = cardMediaHTML(f, `
       <span class="reach-badge" title="Reach">${f.reach}</span>
-      ${f.corner ? '<span class="corner-tag">corner</span>' : ""}`;
+      ${f.corner ? '<span class="corner-tag">corner</span>' : ""}`);
     card.addEventListener("click", () => {
       if (isSel) cut.lineup.delete(f.id);
       else cut.lineup.add(f.id);
@@ -1700,8 +1798,7 @@ function renderCutPick() {
     const f = byId[id];
     const card = document.createElement("button");
     card.className = "card";
-    card.innerHTML = `<img src="${imgSrc(f)}" alt="${f.name} — ${f.type}">
-      <span class="reach-badge" title="Reach">${f.reach}</span>`;
+    card.innerHTML = cardMediaHTML(f, `<span class="reach-badge" title="Reach">${f.reach}</span>`);
     card.addEventListener("click", () => {
       cut.picks.push({ seatIndex: seat, id });
       if (cut.picks.length === cut.pickOrder.length) finishCut();
@@ -1833,7 +1930,7 @@ function renderTTPlayers() {
 function buildTierLineup(nNew, nComf, nExp) {
   const target = effTarget();
   for (const dropHalf of shuffleArr(["vagabond", "knaves"])) {
-    const deck = FACTIONS.filter(f => f.id !== "vagabond2" && f.id !== dropHalf);
+    const deck = availableFactions().filter(f => f.id !== "vagabond2" && f.id !== dropHalf);
     const t1 = deck.filter(f => tierOf(f) === 1);
     const t12 = deck.filter(f => tierOf(f) <= 2);
     if (t1.length < nNew || t12.length < nNew + nComf) continue;
@@ -1914,8 +2011,7 @@ function renderTTPick() {
     if (tierOf(f) > maxTier) continue;
     const card = document.createElement("button");
     card.className = "card";
-    card.innerHTML = `<img src="${imgSrc(f)}" alt="${f.name} — ${f.type}">
-      <span class="reach-badge" title="Reach">${f.reach}</span>`;
+    card.innerHTML = cardMediaHTML(f, `<span class="reach-badge" title="Reach">${f.reach}</span>`);
     card.addEventListener("click", () => {
       tt.picks.push({ seatIndex: seat, id });
       if (tt.picks.length === tt.pickOrder.length) tt.phase = "done";
@@ -2036,7 +2132,7 @@ function bitmaskAssign(factions, players) {
 function findBestWishAssignment(players) {
   const target = effTarget();
   const N = players.length;
-  const pool = FACTIONS.filter(f => f.id !== "vagabond2");
+  const pool = availableFactions().filter(f => f.id !== "vagabond2");
   const candidates = [];
   for (const subset of combinations(pool, N)) {
     if (subset.some(f => f.id === "vagabond") && subset.some(f => f.id === "knaves")) continue;
@@ -2097,14 +2193,14 @@ function renderWish() {
       `<b>${player.name}</b> — tap 3 factions in the order you want them: 1st, 2nd, 3rd.`;
     const grid = $("#wish-grid");
     grid.innerHTML = "";
-    for (const f of FACTIONS) {
+    for (const f of availableFactions()) {
       if (f.id === "vagabond2") continue;
       const rank = player.picks.indexOf(f.id);
       const card = document.createElement("button");
       card.className = "card" + (rank >= 0 ? " selected" : "");
-      card.innerHTML = `<img src="${imgSrc(f)}" alt="${f.name} — ${f.type}">
+      card.innerHTML = cardMediaHTML(f, `
         <span class="reach-badge" title="Reach">${f.reach}</span>
-        ${rank >= 0 ? `<span class="rank-badge">#${rank + 1}</span>` : ""}`;
+        ${rank >= 0 ? `<span class="rank-badge">#${rank + 1}</span>` : ""}`);
       card.addEventListener("click", () => {
         if (rank >= 0) player.picks.splice(rank, 1);
         else if (player.picks.length < 3) player.picks.push(f.id);
@@ -2195,6 +2291,7 @@ renderFav();
 renderCut();
 renderTT();
 renderWish();
+renderSettingsGrid();
 </script>
 </body>
 </html>

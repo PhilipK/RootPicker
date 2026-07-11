@@ -275,6 +275,14 @@
   .tier-tag.comfortable { color: var(--gold); border-color: var(--gold); }
   .tier-tag.expert { color: var(--ink); border-color: var(--ink); }
 
+  /* ---------- wishlist ---------- */
+  .rank-badge {
+    position: absolute; top: 6px; left: 6px;
+    background: var(--gold); color: var(--paper); font-weight: 700; font-size: .8rem;
+    border-radius: 6px; padding: 1px 7px; box-shadow: 0 1px 2px rgba(58,46,28,.35);
+  }
+  .card.selected .rank-badge { background: var(--gold); }
+
   .placeholder-box {
     border: 2px dashed var(--ink-soft); border-radius: 12px; padding: 24px; text-align: center;
     color: var(--ink-soft); font-style: italic; margin-top: 20px;
@@ -297,6 +305,7 @@
     <button role="tab" aria-selected="false" data-mode="fav">Favorite &amp; Ban</button>
     <button role="tab" aria-selected="false" data-mode="cut">Cut &amp; Choose</button>
     <button role="tab" aria-selected="false" data-mode="tt">Teaching Tiers</button>
+    <button role="tab" aria-selected="false" data-mode="wish">Wishlist</button>
   </nav>
 
   <div class="stepper">
@@ -604,6 +613,60 @@
       </div>
     </div>
   </section>
+
+  <!-- ============ WISHLIST (mode 7) ============ -->
+  <section id="mode-wish" class="hidden">
+
+    <div id="wish-setup">
+      <h2>Players &amp; Seats</h2>
+      <p class="note">Names are optional. Seating order and first player are randomized when you start.</p>
+      <div class="players-list" id="wish-players"></div>
+      <p class="note">Everyone secretly ranks their top <b>3</b> factions, 1st to 3rd choice. The app then
+        checks every reach-safe combination of factions and picks whichever assignment makes the table
+        happiest overall (1st choice worth 3 points, 2nd worth 2, 3rd worth 1) — nobody sees the others’
+        picks until the reveal. If someone ends up with none of their three, the reveal suggests giving
+        them a +1 VP head start — a house rule, not from the Law, so use it or skip it as you like.</p>
+      <label class="note" style="display:block">
+        <input type="checkbox" id="wish-adventurous">
+        Adventurous group — allow any mix that reaches 17+
+      </label>
+      <div class="btn-row">
+        <button class="btn" id="wish-start-btn">Shuffle seats &amp; start</button>
+      </div>
+    </div>
+
+    <div id="wish-pass" class="hidden">
+      <h2>Turn Order</h2>
+      <ul class="order-list" id="wish-order"></ul>
+      <div class="picker-banner">Pass the device to <b id="wish-pass-name"></b> — only they should look.</div>
+      <div class="btn-row">
+        <button class="btn" id="wish-show-btn">Make my picks</button>
+      </div>
+    </div>
+
+    <div id="wish-rank" class="hidden">
+      <div class="picker-banner" id="wish-banner"></div>
+      <div class="grid" id="wish-grid"></div>
+      <div class="btn-row">
+        <button class="btn" id="wish-confirm" disabled>Lock in my top 3</button>
+      </div>
+      <p class="note" id="wish-error" style="color:var(--danger)"></p>
+    </div>
+
+    <div id="wish-done" class="hidden">
+      <h2>The Woodland is Set</h2>
+      <p id="wish-total"></p>
+      <ul class="summary-list" id="wish-summary"></ul>
+      <h2>Before You Begin</h2>
+      <ul class="checklist">
+        <li>Standard setup: each player draws <b>three</b> cards <span class="law-ref">(two players: remove the four dominance cards first)</span></li>
+        <li>Using the Advanced Setup board steps instead? Draw <b>five</b>, and after setup keep three <span class="law-ref">(A.7, A.10)</span></li>
+      </ul>
+      <div class="btn-row">
+        <button class="btn secondary" id="wish-reset2">New game</button>
+      </div>
+    </div>
+  </section>
 </main>
 
 <!-- sticky reach tracker (simple mode only) -->
@@ -698,7 +761,7 @@ document.querySelectorAll("nav [role=tab]").forEach(btn => {
     mode = btn.dataset.mode;
     document.querySelectorAll("nav [role=tab]").forEach(b =>
       b.setAttribute("aria-selected", b === btn ? "true" : "false"));
-    for (const m of ["simple", "draft", "hand", "fav", "cut", "tt"])
+    for (const m of ["simple", "draft", "hand", "fav", "cut", "tt", "wish"])
       $(`#mode-${m}`).classList.toggle("hidden", m !== mode);
     $("#tracker").classList.toggle("hidden", mode !== "simple");
     document.body.style.paddingBottom = mode === "simple" ? "" : "0";
@@ -719,6 +782,7 @@ function setCount(v) {
     if (fav.phase !== "setup") resetFav(); else renderFav();
     if (cut.phase !== "setup") resetCut(); else renderCut();
     if (tt.phase !== "setup") resetTT(); else renderTT();
+    if (wish.phase !== "setup") resetWish(); else renderWish();
   }
 }
 $("#pc-minus").addEventListener("click", () => setCount(playerCount - 1));
@@ -1912,6 +1976,201 @@ $("#tt-undo2").addEventListener("click", undoTT);
 $("#tt-reset").addEventListener("click", resetTT);
 $("#tt-reset2").addEventListener("click", resetTT);
 
+/* ================= WISHLIST MODE ================= */
+const wish = {
+  phase: "setup",   // setup | pass | rank | done
+  seats: [],        // { name, picks: [id,id,id] } in turn order (index 0 = first player)
+  turn: 0,          // index into seats — whose turn to submit picks
+  result: null,     // { subset, assign, score, total } once solved
+};
+
+const RANK_LABEL = ["1st choice", "2nd choice", "3rd choice"];
+
+function combinations(arr, k) {
+  const results = [];
+  (function rec(start, combo) {
+    if (combo.length === k) { results.push(combo.slice()); return; }
+    for (let i = start; i < arr.length; i++) { combo.push(arr[i]); rec(i + 1, combo); combo.pop(); }
+  })(0, []);
+  return results;
+}
+
+function wishScore(picks, factionId) {
+  const idx = picks.indexOf(factionId);
+  return idx === 0 ? 3 : idx === 1 ? 2 : idx === 2 ? 1 : 0;
+}
+
+/* Optimal assignment problem via bitmask DP: dp[mask] = best total score
+   assigning the first popcount(mask) players to the faction-index set `mask`. */
+function bitmaskAssign(factions, players) {
+  const N = players.length;
+  const full = (1 << N) - 1;
+  const dp = new Array(1 << N).fill(-Infinity);
+  const parent = new Array(1 << N).fill(-1);
+  dp[0] = 0;
+  for (let mask = 0; mask <= full; mask++) {
+    if (dp[mask] === -Infinity) continue;
+    let p = 0; for (let m = mask; m; m >>= 1) p += m & 1;
+    if (p >= N) continue;
+    for (let f = 0; f < N; f++) {
+      if (mask & (1 << f)) continue;
+      const sc = dp[mask] + wishScore(players[p].picks, factions[f].id);
+      const nmask = mask | (1 << f);
+      if (sc > dp[nmask]) { dp[nmask] = sc; parent[nmask] = f; }
+    }
+  }
+  if (dp[full] === -Infinity) return null;
+  let mask = full;
+  const assign = new Array(N);
+  for (let p = N - 1; p >= 0; p--) {
+    const f = parent[mask];
+    assign[p] = factions[f].id;
+    mask ^= (1 << f);
+  }
+  return { score: dp[full], assign };
+}
+
+/* Try every reach-safe faction subset of the right size (small enough to be
+   exhaustive: at most C(13,6)=1716), solve each one optimally, and keep a
+   random pick among whichever subsets achieve the best total happiness. */
+function findBestWishAssignment(players) {
+  const target = effTarget();
+  const N = players.length;
+  const pool = FACTIONS.filter(f => f.id !== "vagabond2");
+  const candidates = [];
+  for (const subset of combinations(pool, N)) {
+    if (subset.some(f => f.id === "vagabond") && subset.some(f => f.id === "knaves")) continue;
+    const total = subset.reduce((s, f) => s + f.reach, 0);
+    if (total < target) continue;
+    const result = bitmaskAssign(subset, players);
+    if (!result) continue;
+    candidates.push({ subset, assign: result.assign, score: result.score, total });
+  }
+  if (!candidates.length) return null;
+  const maxScore = Math.max(...candidates.map(c => c.score));
+  const bestOnes = candidates.filter(c => c.score === maxScore);
+  return bestOnes[Math.floor(Math.random() * bestOnes.length)];
+}
+
+function startWish() {
+  wish.seats = shuffleArr(playerNames().map(name => ({ name, picks: [] })));
+  wish.turn = 0;
+  wish.result = null;
+  wish.phase = "pass";
+  renderWish();
+}
+
+function renderWishOrder() {
+  const ol = $("#wish-order");
+  ol.innerHTML = "";
+  wish.seats.forEach((p, i) => {
+    const submitted = p.picks.length === 3;
+    const isCurrent = wish.phase !== "done" && i === wish.turn;
+    const li = document.createElement("li");
+    li.className = (i === 0 ? "first " : "") + (isCurrent ? "current " : "") + (submitted ? "done" : "");
+    li.innerHTML = `${i === 0 ? "★ " : ""}${p.name}
+      <span class="who">${submitted ? "picks locked in" : (i === 0 ? "first player" : "waiting")}</span>`;
+    ol.appendChild(li);
+  });
+}
+
+function renderWish() {
+  for (const p of ["setup", "pass", "rank", "done"])
+    $(`#wish-${p}`).classList.toggle("hidden", wish.phase !== p);
+
+  if (wish.phase === "setup") {
+    renderNameInputs($("#wish-players"));
+    $("#wish-adventurous").checked = adventurous;
+    return;
+  }
+
+  if (wish.phase === "pass") {
+    renderWishOrder();
+    $("#wish-pass-name").textContent = wish.seats[wish.turn].name;
+    return;
+  }
+
+  if (wish.phase === "rank") {
+    $("#wish-error").textContent = "";
+    const player = wish.seats[wish.turn];
+    $("#wish-banner").innerHTML =
+      `<b>${player.name}</b> — tap 3 factions in the order you want them: 1st, 2nd, 3rd.`;
+    const grid = $("#wish-grid");
+    grid.innerHTML = "";
+    for (const f of FACTIONS) {
+      if (f.id === "vagabond2") continue;
+      const rank = player.picks.indexOf(f.id);
+      const card = document.createElement("button");
+      card.className = "card" + (rank >= 0 ? " selected" : "");
+      card.innerHTML = `<img src="${imgSrc(f)}" alt="${f.name} — ${f.type}">
+        <span class="reach-badge" title="Reach">${f.reach}</span>
+        ${rank >= 0 ? `<span class="rank-badge">#${rank + 1}</span>` : ""}`;
+      card.addEventListener("click", () => {
+        if (rank >= 0) player.picks.splice(rank, 1);
+        else if (player.picks.length < 3) player.picks.push(f.id);
+        renderWish();
+      });
+      grid.appendChild(card);
+    }
+    $("#wish-confirm").disabled = player.picks.length !== 3;
+    $("#wish-confirm").textContent = player.picks.length === 3
+      ? "Lock in my top 3" : `Pick ${3 - player.picks.length} more`;
+    return;
+  }
+
+  renderWishDone();
+}
+
+function renderWishDone() {
+  renderWishOrder();
+  const { subset, assign, score, total } = wish.result;
+  const rec = REACH_TARGET[playerCount];
+  const cls = total >= rec ? "ok" : total >= 17 ? "adventurous" : "bad";
+  const label = total >= rec ? "good fit" : total >= 17 ? "adventurous (17+)" : "not enough reach";
+  const maxScore = wish.seats.length * 3;
+  $("#wish-total").innerHTML =
+    `Reach <b>${total}</b> / ${rec} recommended &nbsp;<span class="stamp ${cls}">${label}</span>
+    &nbsp;·&nbsp; Happiness <b>${score}</b> / ${maxScore}`;
+  const ul = $("#wish-summary");
+  ul.innerHTML = "";
+  wish.seats.forEach((p, i) => {
+    const id = assign[i];
+    const f = byId[id];
+    const rank = p.picks.indexOf(id);
+    const matchLabel = rank >= 0 ? RANK_LABEL[rank] : "not on their list";
+    const bonus = rank >= 0 ? "" : `<span class="tier-tag comfortable">+1 VP suggested (house rule)</span>`;
+    const wishlistNames = p.picks.map(pid => byId[pid].name).join(" › ");
+    const li = document.createElement("li");
+    li.innerHTML = `<img src="${imgSrc(f)}" alt="">
+      <div><div class="fac">${i === 0 ? "★ " : ""}${p.name} — ${f.name} <span class="law-ref">(${matchLabel})</span> ${bonus}</div>
+      <div class="sub">reach ${f.reach} · ${f.type} · wanted: ${wishlistNames}</div></div>`;
+    ul.appendChild(li);
+  });
+}
+
+$("#wish-start-btn").addEventListener("click", startWish);
+$("#wish-show-btn").addEventListener("click", () => { wish.phase = "rank"; renderWish(); });
+$("#wish-confirm").addEventListener("click", () => {
+  wish.turn++;
+  if (wish.turn < wish.seats.length) { wish.phase = "pass"; renderWish(); return; }
+  const result = findBestWishAssignment(wish.seats);
+  if (!result) {
+    wish.turn--; wish.phase = "rank";
+    renderWish();
+    $("#wish-error").textContent =
+      "Couldn’t find a reach-safe combination of 13 factions for this many players — try the adventurous toggle.";
+    return;
+  }
+  wish.result = result;
+  wish.phase = "done";
+  renderWish();
+});
+$("#wish-reset2").addEventListener("click", resetWish);
+function resetWish() {
+  wish.seats = []; wish.turn = 0; wish.result = null; wish.phase = "setup";
+  renderWish();
+}
+
 /* ---------------- init ---------------- */
 function setAdventurous(v) {
   adventurous = v;
@@ -1921,9 +2180,10 @@ function setAdventurous(v) {
   $("#fav-adventurous").checked = v;
   $("#cut-adventurous").checked = v;
   $("#tt-adventurous").checked = v;
+  $("#wish-adventurous").checked = v;
   updateSimple();
 }
-for (const id of ["#adventurous-toggle", "#hand-adventurous", "#fav-adventurous", "#cut-adventurous", "#tt-adventurous"]) {
+for (const id of ["#adventurous-toggle", "#hand-adventurous", "#fav-adventurous", "#cut-adventurous", "#tt-adventurous", "#wish-adventurous"]) {
   $(id).addEventListener("change", e => setAdventurous(e.target.checked));
   $(id).checked = adventurous;
 }
@@ -1934,6 +2194,7 @@ renderHand();
 renderFav();
 renderCut();
 renderTT();
+renderWish();
 </script>
 </body>
 </html>

@@ -275,6 +275,7 @@
     <button role="tab" aria-selected="false" data-mode="draft">Advanced Draft</button>
     <button role="tab" aria-selected="false" data-mode="hand">Hand Draft</button>
     <button role="tab" aria-selected="false" data-mode="fav">Favorite &amp; Ban</button>
+    <button role="tab" aria-selected="false" data-mode="cut">Cut &amp; Choose</button>
   </nav>
 
   <div class="stepper">
@@ -479,6 +480,61 @@
       </div>
     </div>
   </section>
+
+  <!-- ============ CUT & CHOOSE (mode 5) ============ -->
+  <section id="mode-cut" class="hidden">
+
+    <div id="cut-setup">
+      <h2>Players &amp; Seats</h2>
+      <p class="note">Names are optional. Seating order, first player, and the Warden are randomized when you start.</p>
+      <div class="players-list" id="cut-players"></div>
+      <p class="note">One randomly chosen player is the <b>Warden</b>. They build a lineup of exactly as many
+        factions as there are players, meeting the reach total. Then everyone else picks one from the lineup,
+        in turn order — and the Warden plays whatever’s left. Classic cut-and-choose: the fairest lineup is
+        one the Warden would be happy to end up with.</p>
+      <label class="note" style="display:block">
+        <input type="checkbox" id="cut-adventurous">
+        Adventurous group — allow any mix that reaches 17+
+      </label>
+      <div class="btn-row">
+        <button class="btn" id="cut-start-btn">Shuffle seats &amp; choose Warden</button>
+      </div>
+    </div>
+
+    <div id="cut-build" class="hidden">
+      <div class="picker-banner" id="cut-build-banner"></div>
+      <div class="grid" id="cut-build-grid"></div>
+      <div class="btn-row">
+        <button class="btn" id="cut-confirm-btn" disabled>Lock in the lineup</button>
+      </div>
+    </div>
+
+    <div id="cut-pick" class="hidden">
+      <h2>Turn Order</h2>
+      <ul class="order-list" id="cut-order"></ul>
+      <div class="picker-banner" id="cut-pick-banner"></div>
+      <div class="grid" id="cut-pick-grid"></div>
+      <div class="btn-row">
+        <button class="btn secondary" id="cut-undo">Undo last pick</button>
+        <button class="btn secondary" id="cut-reset">Start over</button>
+      </div>
+    </div>
+
+    <div id="cut-done" class="hidden">
+      <h2>The Woodland is Set</h2>
+      <p id="cut-total"></p>
+      <ul class="summary-list" id="cut-summary"></ul>
+      <h2>Before You Begin</h2>
+      <ul class="checklist">
+        <li>Standard setup: each player draws <b>three</b> cards <span class="law-ref">(two players: remove the four dominance cards first)</span></li>
+        <li>Using the Advanced Setup board steps instead? Draw <b>five</b>, and after setup keep three <span class="law-ref">(A.7, A.10)</span></li>
+      </ul>
+      <div class="btn-row">
+        <button class="btn secondary" id="cut-undo2">Undo last pick</button>
+        <button class="btn secondary" id="cut-reset2">New game</button>
+      </div>
+    </div>
+  </section>
 </main>
 
 <!-- sticky reach tracker (simple mode only) -->
@@ -506,23 +562,24 @@
 "use strict";
 
 /* ---------------- data (Law of Root, Oct 2025) ---------------- */
+/* difficulty: 1 = easiest to learn/play, 13 = hardest (Philip's ranking) */
 const FACTIONS = [
-  { id:"marquise",  name:"Marquise de Cat",        reach:10, type:"militant",  corner:true  },
-  { id:"hundreds",  name:"Lord of the Hundreds",   reach:9,  type:"militant",  corner:true  },
-  { id:"keepers",   name:"Keepers in Iron",        reach:8,  type:"militant",  corner:true  },
-  { id:"duchy",     name:"Underground Duchy",      reach:8,  type:"militant",  corner:true  },
-  { id:"lilypad",   name:"Lilypad Diaspora",       reach:7,  type:"militant",  corner:false },
-  { id:"eyrie",     name:"Eyrie Dynasties",        reach:7,  type:"militant",  corner:true  },
-  { id:"vagabond",  name:"Vagabond",               reach:5,  type:"insurgent", corner:false,
+  { id:"marquise",  name:"Marquise de Cat",        reach:10, type:"militant",  corner:true,  difficulty:1  },
+  { id:"hundreds",  name:"Lord of the Hundreds",   reach:9,  type:"militant",  corner:true,  difficulty:2  },
+  { id:"eyrie",     name:"Eyrie Dynasties",        reach:7,  type:"militant",  corner:true,  difficulty:3  },
+  { id:"vagabond",  name:"Vagabond",               reach:5,  type:"insurgent", corner:false, difficulty:4,
     dealNote:"Deal 1 random character card next to it (A.8.2.III)" },
-  { id:"riverfolk", name:"Riverfolk Company",      reach:5,  type:"insurgent", corner:false },
-  { id:"knaves",    name:"Knaves of the Deepwood", reach:4,  type:"insurgent", corner:false,
+  { id:"duchy",     name:"Underground Duchy",      reach:8,  type:"militant",  corner:true,  difficulty:5  },
+  { id:"keepers",   name:"Keepers in Iron",        reach:8,  type:"militant",  corner:true,  difficulty:6  },
+  { id:"lilypad",   name:"Lilypad Diaspora",       reach:7,  type:"militant",  corner:false, difficulty:7  },
+  { id:"riverfolk", name:"Riverfolk Company",      reach:5,  type:"insurgent", corner:false, difficulty:8  },
+  { id:"knaves",    name:"Knaves of the Deepwood", reach:4,  type:"insurgent", corner:false, difficulty:9,
     dealNote:"Deal 4 random Captain cards next to it; choose 3 in setup (A.8.2.IV)" },
-  { id:"twilight",  name:"Twilight Council",       reach:4,  type:"insurgent", corner:true  },
-  { id:"woodland",  name:"Woodland Alliance",      reach:3,  type:"insurgent", corner:false },
-  { id:"corvid",    name:"Corvid Conspiracy",      reach:3,  type:"insurgent", corner:false },
-  { id:"lizard",    name:"The Lizard Cult",        reach:2,  type:"insurgent", corner:true  },
-  { id:"vagabond2", name:"Second Vagabond",        reach:2,  type:"insurgent", corner:false, img:"vagabond",
+  { id:"twilight",  name:"Twilight Council",       reach:4,  type:"insurgent", corner:true,  difficulty:10 },
+  { id:"woodland",  name:"Woodland Alliance",      reach:3,  type:"insurgent", corner:false, difficulty:11 },
+  { id:"corvid",    name:"Corvid Conspiracy",      reach:3,  type:"insurgent", corner:false, difficulty:12 },
+  { id:"lizard",    name:"The Lizard Cult",        reach:2,  type:"insurgent", corner:true,  difficulty:13 },
+  { id:"vagabond2", name:"Second Vagabond",        reach:2,  type:"insurgent", corner:false, img:"vagabond", difficulty:4,
     dealNote:"Deal 1 random character card next to it (A.8.2.III)" },
 ];
 const byId = Object.fromEntries(FACTIONS.map(f => [f.id, f]));
@@ -572,7 +629,7 @@ document.querySelectorAll("nav [role=tab]").forEach(btn => {
     mode = btn.dataset.mode;
     document.querySelectorAll("nav [role=tab]").forEach(b =>
       b.setAttribute("aria-selected", b === btn ? "true" : "false"));
-    for (const m of ["simple", "draft", "hand", "fav"])
+    for (const m of ["simple", "draft", "hand", "fav", "cut"])
       $(`#mode-${m}`).classList.toggle("hidden", m !== mode);
     $("#tracker").classList.toggle("hidden", mode !== "simple");
     document.body.style.paddingBottom = mode === "simple" ? "" : "0";
@@ -591,6 +648,7 @@ function setCount(v) {
   if (typeof hand !== "undefined") {
     if (hand.phase !== "setup") resetHand(); else renderHand();
     if (fav.phase !== "setup") resetFav(); else renderFav();
+    if (cut.phase !== "setup") resetCut(); else renderCut();
   }
 }
 $("#pc-minus").addEventListener("click", () => setCount(playerCount - 1));
@@ -629,16 +687,16 @@ function toggleFaction(id) {
   updateSimple();
 }
 
-/* Could the table still reach the recommended total if this faction is added?
+/* Could the table still reach the recommended total if this faction is added to `sel`?
    Checks the best case: current picks + candidate + the highest-reach factions
-   still available for the remaining seats. */
-function blockReason(id) {
-  if (id === "vagabond2" && !selected.has("vagabond")) return "Select the Vagabond first";
-  const S = new Set(selected); S.add(id);
+   still available for the remaining seats (up to `capacity` factions total). */
+function reachBlockReason(sel, id, capacity) {
+  if (id === "vagabond2" && !sel.has("vagabond")) return "Select the Vagabond first";
+  const S = new Set(sel); S.add(id);
   if (S.has("vagabond") && S.has("knaves"))
     return "The Vagabond and the Knaves cannot both be in the same game (A.8.1)";
-  const slots = playerCount - S.size;
-  if (slots < 0) return `You already have ${playerCount} factions — deselect one first`;
+  const slots = capacity - S.size;
+  if (slots < 0) return `You already have ${capacity} factions — deselect one first`;
   let pool = FACTIONS.filter(f => !S.has(f.id));
   if (S.has("knaves")) pool = pool.filter(f => f.id !== "vagabond" && f.id !== "vagabond2");
   if (!S.has("vagabond") && !pool.some(f => f.id === "vagabond"))
@@ -650,6 +708,7 @@ function blockReason(id) {
     return `Best possible total would be ${best} — can’t reach ${target}`;
   return null;
 }
+function blockReason(id) { return reachBlockReason(selected, id, playerCount); }
 
 function updateSimple() {
   document.querySelectorAll("#simple-grid .card").forEach(card => {
@@ -1410,6 +1469,174 @@ $("#fav-reset").addEventListener("click", resetFav);
 $("#fav-reset2").addEventListener("click", resetFav);
 $("#fav-reset3").addEventListener("click", resetFav);
 
+/* ================= CUT & CHOOSE MODE ================= */
+const cut = {
+  phase: "setup",   // setup | build | pick | done
+  seats: [],        // names in turn order (index 0 = first player)
+  wardenIdx: 0,     // index into seats
+  lineup: new Set(),// faction ids the Warden built, size === playerCount
+  pickOrder: [],    // seat indices who pick, in turn order (excludes the Warden)
+  picks: [],        // { seatIndex, id } in pick order
+  wardenPick: null, // faction id left over for the Warden
+};
+
+function startCut() {
+  cut.seats = shuffleArr(playerNames().slice());
+  cut.wardenIdx = Math.floor(Math.random() * playerCount);
+  cut.lineup = new Set();
+  cut.picks = [];
+  cut.wardenPick = null;
+  cut.phase = "build";
+  renderCut();
+}
+
+function renderCutBuild() {
+  const target = effTarget();
+  const total = [...cut.lineup].reduce((s, id) => s + byId[id].reach, 0);
+  const full = cut.lineup.size === playerCount;
+  $("#cut-build-banner").innerHTML =
+    `<b>${cut.seats[cut.wardenIdx]}</b> is the Warden — build a lineup of exactly
+    <b>${playerCount}</b> factions with reach <b>${target}+</b>. You’ll play whatever’s left once
+    everyone else has picked. &nbsp;<span class="stamp ${total >= target && full ? "ok" : "neutral"}">
+    ${cut.lineup.size} / ${playerCount} chosen · reach ${total} / ${target}</span>`;
+
+  const grid = $("#cut-build-grid");
+  grid.innerHTML = "";
+  for (const f of FACTIONS) {
+    if (f.id === "vagabond2" && !cut.lineup.has("vagabond")) continue;
+    const isSel = cut.lineup.has(f.id);
+    const reason = isSel ? null : reachBlockReason(cut.lineup, f.id, playerCount);
+    const card = document.createElement("button");
+    card.className = "card" + (isSel ? " selected" : "") + (reason ? " dimmed" : "");
+    card.disabled = !!reason;
+    card.title = reason || "";
+    card.innerHTML = `<img src="${imgSrc(f)}" alt="${f.name} — ${f.type}">
+      <span class="reach-badge" title="Reach">${f.reach}</span>
+      ${f.corner ? '<span class="corner-tag">corner</span>' : ""}`;
+    card.addEventListener("click", () => {
+      if (isSel) cut.lineup.delete(f.id);
+      else cut.lineup.add(f.id);
+      if (f.id === "vagabond" && !cut.lineup.has("vagabond")) cut.lineup.delete("vagabond2");
+      renderCut();
+    });
+    grid.appendChild(card);
+  }
+  $("#cut-confirm-btn").disabled = !(full && total >= target);
+}
+
+function confirmCutLineup() {
+  cut.pickOrder = cut.seats.map((_, i) => i).filter(i => i !== cut.wardenIdx);
+  cut.picks = [];
+  cut.phase = "pick";
+  renderCut();
+}
+
+function renderCutOrder() {
+  const ol = $("#cut-order");
+  ol.innerHTML = "";
+  cut.seats.forEach((name, i) => {
+    if (i === cut.wardenIdx) {
+      const li = document.createElement("li");
+      li.className = (i === 0 ? "first " : "") + (cut.phase === "done" ? "done" : "");
+      li.innerHTML = `${i === 0 ? "★ " : ""}${name}
+        <span class="who">${cut.wardenPick ? "Warden — " + byId[cut.wardenPick].name : "Warden — gets what’s left"}</span>`;
+      ol.appendChild(li);
+      return;
+    }
+    const pick = cut.picks.find(p => p.seatIndex === i);
+    const isCurrent = cut.phase === "pick" && i === cut.pickOrder[cut.picks.length];
+    const li = document.createElement("li");
+    li.className = (i === 0 ? "first " : "") + (isCurrent ? "current " : "") + (pick ? "done" : "");
+    li.innerHTML = `${i === 0 ? "★ " : ""}${name}
+      <span class="who">${pick ? byId[pick.id].name : (i === 0 ? "first player" : "waiting to pick")}</span>`;
+    ol.appendChild(li);
+  });
+}
+
+function renderCutPick() {
+  renderCutOrder();
+  const seat = cut.pickOrder[cut.picks.length];
+  $("#cut-pick-banner").innerHTML = `<b>${cut.seats[seat]}</b> picks now.`;
+  $("#cut-undo").disabled = !cut.picks.length;
+  const taken = new Set(cut.picks.map(p => p.id));
+  const grid = $("#cut-pick-grid");
+  grid.innerHTML = "";
+  for (const id of cut.lineup) {
+    if (taken.has(id)) continue;
+    const f = byId[id];
+    const card = document.createElement("button");
+    card.className = "card";
+    card.innerHTML = `<img src="${imgSrc(f)}" alt="${f.name} — ${f.type}">
+      <span class="reach-badge" title="Reach">${f.reach}</span>`;
+    card.addEventListener("click", () => {
+      cut.picks.push({ seatIndex: seat, id });
+      if (cut.picks.length === cut.pickOrder.length) finishCut();
+      renderCut();
+    });
+    grid.appendChild(card);
+  }
+}
+
+function finishCut() {
+  const taken = new Set(cut.picks.map(p => p.id));
+  cut.wardenPick = [...cut.lineup].find(id => !taken.has(id));
+  cut.phase = "done";
+}
+
+function renderCutDone() {
+  renderCutOrder();
+  const total = [...cut.lineup].reduce((s, id) => s + byId[id].reach, 0);
+  const rec = REACH_TARGET[playerCount];
+  const cls = total >= rec ? "ok" : total >= 17 ? "adventurous" : "bad";
+  const label = total >= rec ? "good fit" : total >= 17 ? "adventurous (17+)" : "not enough reach";
+  $("#cut-total").innerHTML =
+    `Reach <b>${total}</b> / ${rec} recommended &nbsp;<span class="stamp ${cls}">${label}</span>`;
+
+  const ul = $("#cut-summary");
+  ul.innerHTML = "";
+  cut.seats.forEach((name, i) => {
+    const id = i === cut.wardenIdx ? cut.wardenPick : cut.picks.find(p => p.seatIndex === i).id;
+    const f = byId[id];
+    const li = document.createElement("li");
+    li.innerHTML = `<img src="${imgSrc(f)}" alt="">
+      <div><div class="fac">${i === 0 ? "★ " : ""}${name} — ${f.name}</div>
+      <div class="sub">reach ${f.reach} · ${f.type} · ${i === cut.wardenIdx ? "Warden’s leftover" : "picked"}</div></div>`;
+    ul.appendChild(li);
+  });
+}
+
+function renderCut() {
+  for (const p of ["setup", "build", "pick", "done"])
+    $(`#cut-${p}`).classList.toggle("hidden", cut.phase !== p);
+  if (cut.phase === "setup") {
+    renderNameInputs($("#cut-players"));
+    $("#cut-adventurous").checked = adventurous;
+    return;
+  }
+  if (cut.phase === "build") return renderCutBuild();
+  if (cut.phase === "pick") return renderCutPick();
+  renderCutDone();
+}
+
+function undoCut() {
+  if (!cut.picks.length) return;
+  cut.picks.pop();
+  cut.wardenPick = null;
+  cut.phase = "pick";
+  renderCut();
+}
+function resetCut() {
+  cut.lineup = new Set(); cut.picks = []; cut.wardenPick = null; cut.phase = "setup";
+  renderCut();
+}
+
+$("#cut-start-btn").addEventListener("click", startCut);
+$("#cut-confirm-btn").addEventListener("click", confirmCutLineup);
+$("#cut-undo").addEventListener("click", undoCut);
+$("#cut-undo2").addEventListener("click", undoCut);
+$("#cut-reset").addEventListener("click", resetCut);
+$("#cut-reset2").addEventListener("click", resetCut);
+
 /* ---------------- init ---------------- */
 function setAdventurous(v) {
   adventurous = v;
@@ -1417,9 +1644,10 @@ function setAdventurous(v) {
   $("#adventurous-toggle").checked = v;
   $("#hand-adventurous").checked = v;
   $("#fav-adventurous").checked = v;
+  $("#cut-adventurous").checked = v;
   updateSimple();
 }
-for (const id of ["#adventurous-toggle", "#hand-adventurous", "#fav-adventurous"]) {
+for (const id of ["#adventurous-toggle", "#hand-adventurous", "#fav-adventurous", "#cut-adventurous"]) {
   $(id).addEventListener("change", e => setAdventurous(e.target.checked));
   $(id).checked = adventurous;
 }
@@ -1428,6 +1656,7 @@ renderSimpleGrid();
 renderDraftSetup();
 renderHand();
 renderFav();
+renderCut();
 </script>
 </body>
 </html>

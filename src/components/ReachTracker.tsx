@@ -38,8 +38,6 @@ export function ReachTracker({ selectedIds }: { selectedIds: Set<string> }) {
   if (playerCount === 2 && n === 2)
     warnings.push("Two players: remove the four dominance cards from the deck (5.1.3)");
 
-  const hideAdvLabel = recTarget - 17 < 3 && recTarget !== 17;
-
   return (
     <div id="tracker">
       <div className="inner">
@@ -56,10 +54,12 @@ export function ReachTracker({ selectedIds }: { selectedIds: Set<string> }) {
           <div className="mark" style={{ left: pct(recTarget) }} />
         </div>
         <div className="track-labels">
-          <span className={hideAdvLabel ? "hidden" : ""} style={{ left: pct(17) }}>
+          <span className="adv" style={{ left: pct(17) }}>
             17 adventurous
           </span>
-          <span style={{ left: pct(recTarget) }}>{recTarget} recommended</span>
+          <span className="rec" style={{ left: `min(${pct(recTarget)}, calc(100% - 92px))` }}>
+            {recTarget} recommended
+          </span>
         </div>
         <div className="warnings">
           {warnings.map((w, i) => (

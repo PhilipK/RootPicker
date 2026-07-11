@@ -215,7 +215,9 @@ details.explainer .note { margin: 0; padding: 0 12px 10px; }
 .track .mark { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--ink); }
 .track .mark.adv { background: transparent; border-left: 3px dotted var(--ink); }
 .track-labels { position: relative; height: 1.1em; font-size: .78rem; color: var(--ink-soft); }
-.track-labels span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.track-labels span { position: absolute; white-space: nowrap; }
+.track-labels span.adv { transform: translateX(calc(-100% - 4px)); }
+.track-labels span.rec { transform: translateX(4px); }
 #tracker .warnings { margin-top: 6px; font-size: .88rem; color: var(--danger); }
 #tracker .warnings div::before { content: "⚠ "; }
 

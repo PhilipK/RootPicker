@@ -14,17 +14,27 @@
     --militant: #8C2B1E;
     --insurgent: #2C5175;
     --moss: #5F7036;
-    --gold: #B08D2E;
-    --danger: #9B2915;
+    --gold: #C79A3B;
+    --danger: #B5432B;
     --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    /* dark war-table backdrop: the cards themselves stay parchment-light
+       (so faction art keeps its original background) and read like
+       lantern-lit tiles laid out on a dark table */
+    --table: #171310;
+    --table-deep: #0e0b09;
+    --fg: #E6D9B8;
+    --fg-soft: #9C8B68;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body {
-    background: var(--parchment);
-    background-image: radial-gradient(ellipse at 50% 0%, rgba(255,250,230,.5), rgba(0,0,0,0) 60%),
-                      radial-gradient(ellipse at 50% 110%, rgba(90,70,30,.14), rgba(0,0,0,0) 55%);
-    color: var(--ink);
+    background: var(--table);
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+      radial-gradient(ellipse at 50% 0%, rgba(120,95,50,.20), rgba(0,0,0,0) 55%),
+      radial-gradient(ellipse at 50% 100%, var(--table-deep), rgba(0,0,0,0) 60%);
+    background-blend-mode: soft-light, normal, normal;
+    color: var(--fg);
     font-family: var(--serif);
     line-height: 1.45;
     min-height: 100vh;
@@ -39,22 +49,26 @@
     letter-spacing: .12em;
     margin: 0;
     font-weight: 700;
+    color: var(--fg);
+    text-shadow: 0 0 22px rgba(199,154,59,.35);
   }
   header .rule {
     width: min(420px, 80%); margin: 8px auto 6px;
-    border-top: 2px solid var(--ink); border-bottom: 1px solid var(--ink);
+    border-top: 2px solid var(--gold); border-bottom: 1px solid rgba(199,154,59,.35);
     height: 3px;
   }
-  header p { margin: 2px 0 0; color: var(--ink-soft); font-style: italic; font-size: .95rem; }
+  header p { margin: 2px 0 0; color: var(--fg-soft); font-style: italic; font-size: .95rem; }
 
   /* ---------- tabs ---------- */
   nav { display: flex; justify-content: center; gap: 6px; margin: 18px 0 8px; flex-wrap: wrap; }
   nav button {
     font: inherit; font-variant: small-caps; letter-spacing: .06em; font-size: 1.02rem;
     background: none; border: none; border-bottom: 3px solid transparent;
-    color: var(--ink-soft); padding: 6px 14px; cursor: pointer;
+    color: var(--fg-soft); padding: 6px 14px; cursor: pointer;
+    transition: color .15s ease, border-color .15s ease;
   }
-  nav button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); font-weight: 700; }
+  nav button[aria-selected="true"] { color: var(--gold); border-bottom-color: var(--gold); font-weight: 700; }
+  nav button:hover { color: var(--fg); }
   nav button:focus-visible, .btn:focus-visible, .card:focus-visible, .stepper button:focus-visible,
   input:focus-visible, .chip:focus-visible {
     outline: 3px solid var(--gold); outline-offset: 2px;
@@ -75,9 +89,10 @@
 
   h2 {
     font-variant: small-caps; letter-spacing: .08em; font-size: 1.25rem;
-    border-bottom: 1px solid var(--ink-soft); padding-bottom: 4px; margin: 26px 0 12px;
+    border-bottom: 1px solid rgba(230,217,184,.25); padding-bottom: 4px; margin: 26px 0 12px;
+    color: var(--fg);
   }
-  .note { color: var(--ink-soft); font-style: italic; font-size: .92rem; margin: 6px 0; }
+  .note { color: var(--fg-soft); font-style: italic; font-size: .92rem; margin: 6px 0; }
 
   /* ---------- faction grid ---------- */
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
@@ -85,11 +100,14 @@
     display: flex; flex-direction: column;
     position: relative; border: 2px solid var(--ink); border-radius: 10px;
     background: var(--paper); cursor: pointer; padding: 0; overflow: hidden;
-    font: inherit; color: inherit; text-align: center;
-    transition: transform .12s ease, box-shadow .12s ease;
-    box-shadow: 0 1px 3px rgba(58,46,28,.25);
+    font: inherit; color: var(--ink); text-align: center;
+    transition: transform .15s ease, box-shadow .2s ease;
+    box-shadow: 0 3px 10px rgba(0,0,0,.55), 0 0 0 1px rgba(0,0,0,.3);
   }
-  .card:hover { transform: translateY(-2px); box-shadow: 0 4px 9px rgba(58,46,28,.3); }
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(0,0,0,.6), 0 0 26px rgba(199,154,59,.35), 0 0 0 1px rgba(199,154,59,.4);
+  }
   .card-media { position: relative; aspect-ratio: 1 / 1; overflow: hidden; background: var(--paper); }
   .card img { display: block; width: 100%; height: 100%; object-fit: contain; }
   .card .card-name {
@@ -188,7 +206,7 @@
   }
   .players-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin: 8px 0; }
   .players-list label { display: flex; align-items: center; gap: 8px; font-size: .95rem; }
-  .players-list .seat { color: var(--ink-soft); white-space: nowrap; }
+  .players-list .seat { color: var(--fg-soft); white-space: nowrap; }
 
   /* ---------- draft pool chips (include/omit) ---------- */
   .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
@@ -223,7 +241,7 @@
   }
   .picker-banner b { font-variant: small-caps; letter-spacing: .04em; }
 
-  .pool-note { font-size: .85rem; margin: 6px 4px 0; color: var(--ink-soft); font-style: italic; }
+  .pool-note { font-size: .85rem; margin: 6px 4px 0; color: var(--fg-soft); font-style: italic; }
   .card .lock-badge {
     position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
     background: rgba(58,46,28,.45); color: var(--paper); font-variant: small-caps; letter-spacing: .05em;
@@ -247,7 +265,7 @@
   .summary-list .sub { color: var(--ink-soft); font-size: .88rem; }
   .checklist { margin: 8px 0 0; padding-left: 1.3em; }
   .checklist li { margin: 4px 0; }
-  .law-ref { color: var(--ink-soft); font-size: .8rem; }
+  .law-ref { color: var(--fg-soft); font-size: .8rem; }
 
   /* ---------- favorite / ban ---------- */
   .kind-toggle { display: flex; gap: 10px; margin: 12px 0; }
@@ -303,8 +321,8 @@
   .card.selected .rank-badge { background: var(--gold); }
 
   .placeholder-box {
-    border: 2px dashed var(--ink-soft); border-radius: 12px; padding: 24px; text-align: center;
-    color: var(--ink-soft); font-style: italic; margin-top: 20px;
+    border: 2px dashed var(--fg-soft); border-radius: 12px; padding: 24px; text-align: center;
+    color: var(--fg-soft); font-style: italic; margin-top: 20px;
   }
   .hidden { display: none !important; }
 </style>

@@ -255,6 +255,26 @@
   .reveal-log li.fav-line { border-color: var(--moss); }
   .reveal-log li.void-line { border-style: dashed; }
 
+  /* ---------- teaching tiers ---------- */
+  .tt-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .tt-row input[type="text"] { flex: 1; min-width: 110px; }
+  .tt-tiers { display: flex; gap: 4px; }
+  .tt-tiers button {
+    font: inherit; font-size: .78rem; font-variant: small-caps; letter-spacing: .03em;
+    border: 2px solid var(--ink-soft); border-radius: 6px; padding: 3px 8px;
+    background: var(--paper); color: var(--ink-soft); cursor: pointer;
+  }
+  .tt-tiers button[aria-pressed="true"].new { border-color: var(--moss); color: var(--moss); font-weight: 700; }
+  .tt-tiers button[aria-pressed="true"].comfortable { border-color: var(--gold); color: var(--gold); font-weight: 700; }
+  .tt-tiers button[aria-pressed="true"].expert { border-color: var(--ink); color: var(--ink); font-weight: 700; }
+  .tier-tag {
+    font-size: .72rem; font-variant: small-caps; letter-spacing: .03em;
+    padding: 1px 6px; border-radius: 4px; border: 1px solid;
+  }
+  .tier-tag.new { color: var(--moss); border-color: var(--moss); }
+  .tier-tag.comfortable { color: var(--gold); border-color: var(--gold); }
+  .tier-tag.expert { color: var(--ink); border-color: var(--ink); }
+
   .placeholder-box {
     border: 2px dashed var(--ink-soft); border-radius: 12px; padding: 24px; text-align: center;
     color: var(--ink-soft); font-style: italic; margin-top: 20px;
@@ -276,6 +296,7 @@
     <button role="tab" aria-selected="false" data-mode="hand">Hand Draft</button>
     <button role="tab" aria-selected="false" data-mode="fav">Favorite &amp; Ban</button>
     <button role="tab" aria-selected="false" data-mode="cut">Cut &amp; Choose</button>
+    <button role="tab" aria-selected="false" data-mode="tt">Teaching Tiers</button>
   </nav>
 
   <div class="stepper">
@@ -535,6 +556,54 @@
       </div>
     </div>
   </section>
+
+  <!-- ============ TEACHING TIERS (mode 6) ============ -->
+  <section id="mode-tt" class="hidden">
+
+    <div id="tt-setup">
+      <h2>Players &amp; Experience</h2>
+      <p class="note">Names are optional. Tag each player <b>New</b>, <b>Comfortable</b>, or <b>Expert</b>.
+        Seating order and first player are randomized when you start.</p>
+      <div id="tt-players"></div>
+      <p class="note">The app builds one lineup with enough beginner-friendly factions for your New players
+        and enough moderate ones for your Comfortable players, then everyone picks — New players choose
+        first from the easy end, Experts pick last from whatever’s left.</p>
+      <label class="note" style="display:block">
+        <input type="checkbox" id="tt-adventurous">
+        Adventurous group — allow any mix that reaches 17+
+      </label>
+      <div class="btn-row">
+        <button class="btn" id="tt-start-btn">Shuffle seats &amp; build lineup</button>
+      </div>
+      <p class="note" id="tt-error" style="color:var(--danger)"></p>
+    </div>
+
+    <div id="tt-pick" class="hidden">
+      <h2>Turn Order</h2>
+      <ul class="order-list" id="tt-order"></ul>
+      <div class="picker-banner" id="tt-pick-banner"></div>
+      <div class="grid" id="tt-pick-grid"></div>
+      <div class="btn-row">
+        <button class="btn secondary" id="tt-undo">Undo last pick</button>
+        <button class="btn secondary" id="tt-reset">Start over</button>
+      </div>
+    </div>
+
+    <div id="tt-done" class="hidden">
+      <h2>The Woodland is Set</h2>
+      <p id="tt-total"></p>
+      <ul class="summary-list" id="tt-summary"></ul>
+      <h2>Before You Begin</h2>
+      <ul class="checklist">
+        <li>Standard setup: each player draws <b>three</b> cards <span class="law-ref">(two players: remove the four dominance cards first)</span></li>
+        <li>Using the Advanced Setup board steps instead? Draw <b>five</b>, and after setup keep three <span class="law-ref">(A.7, A.10)</span></li>
+      </ul>
+      <div class="btn-row">
+        <button class="btn secondary" id="tt-undo2">Undo last pick</button>
+        <button class="btn secondary" id="tt-reset2">New game</button>
+      </div>
+    </div>
+  </section>
 </main>
 
 <!-- sticky reach tracker (simple mode only) -->
@@ -629,7 +698,7 @@ document.querySelectorAll("nav [role=tab]").forEach(btn => {
     mode = btn.dataset.mode;
     document.querySelectorAll("nav [role=tab]").forEach(b =>
       b.setAttribute("aria-selected", b === btn ? "true" : "false"));
-    for (const m of ["simple", "draft", "hand", "fav", "cut"])
+    for (const m of ["simple", "draft", "hand", "fav", "cut", "tt"])
       $(`#mode-${m}`).classList.toggle("hidden", m !== mode);
     $("#tracker").classList.toggle("hidden", mode !== "simple");
     document.body.style.paddingBottom = mode === "simple" ? "" : "0";
@@ -649,6 +718,7 @@ function setCount(v) {
     if (hand.phase !== "setup") resetHand(); else renderHand();
     if (fav.phase !== "setup") resetFav(); else renderFav();
     if (cut.phase !== "setup") resetCut(); else renderCut();
+    if (tt.phase !== "setup") resetTT(); else renderTT();
   }
 }
 $("#pc-minus").addEventListener("click", () => setCount(playerCount - 1));
@@ -1637,6 +1707,211 @@ $("#cut-undo2").addEventListener("click", undoCut);
 $("#cut-reset").addEventListener("click", resetCut);
 $("#cut-reset2").addEventListener("click", resetCut);
 
+/* ================= TEACHING TIERS MODE ================= */
+const TIERS = ["new", "comfortable", "expert"];
+const TIER_LABEL = { new: "New", comfortable: "Comfortable", expert: "Expert" };
+const tierOf = f => f.difficulty <= 4 ? 1 : f.difficulty <= 9 ? 2 : 3;
+
+const tt = {
+  phase: "setup",   // setup | pick | done
+  seats: [],        // { name, tier } in turn order (index 0 = first player)
+  lineup: [],       // faction ids in this game, size === playerCount
+  dropHalf: null,
+  pickOrder: [],    // seat indices in pick order (New block, then Comfortable, then Expert; seat order within each)
+  picks: [],        // { seatIndex, id }
+};
+
+function ttTierStore() {
+  try { return JSON.parse(localStorage.getItem("rp.tiers")) || []; } catch { return []; }
+}
+
+function renderTTPlayers() {
+  const wrap = $("#tt-players");
+  wrap.innerHTML = "";
+  const names = store.names;
+  const tiers = ttTierStore();
+  for (let i = 0; i < playerCount; i++) {
+    const row = document.createElement("div");
+    row.className = "tt-row";
+    row.style.margin = "6px 0";
+    const label = document.createElement("span");
+    label.className = "seat";
+    label.textContent = (i + 1) + ".";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = `Player ${i + 1}`;
+    input.value = names[i] || "";
+    input.addEventListener("input", () => { const n = store.names; n[i] = input.value; store.names = n; });
+    const tierWrap = document.createElement("div");
+    tierWrap.className = "tt-tiers";
+    const current = tiers[i] || "comfortable";
+    for (const t of TIERS) {
+      const b = document.createElement("button");
+      b.className = t;
+      b.textContent = TIER_LABEL[t];
+      b.setAttribute("aria-pressed", t === current);
+      b.addEventListener("click", () => {
+        const ts = ttTierStore(); ts[i] = t; localStorage.setItem("rp.tiers", JSON.stringify(ts));
+        renderTTPlayers();
+      });
+      tierWrap.appendChild(b);
+    }
+    if (!tiers[i]) { const ts = ttTierStore(); ts[i] = current; localStorage.setItem("rp.tiers", JSON.stringify(ts)); }
+    row.append(label, input, tierWrap);
+    wrap.appendChild(row);
+  }
+}
+
+/* Build one reach-safe lineup of exactly playerCount factions with enough
+   tier-1 cards for New players, and enough tier-≤2 cards for New+Comfortable
+   combined (Hall's-theorem condition for the nested New⊂Comfortable⊂Expert
+   eligibility). Returns null if genuinely impossible. */
+function buildTierLineup(nNew, nComf, nExp) {
+  const target = effTarget();
+  for (const dropHalf of shuffleArr(["vagabond", "knaves"])) {
+    const deck = FACTIONS.filter(f => f.id !== "vagabond2" && f.id !== dropHalf);
+    const t1 = deck.filter(f => tierOf(f) === 1);
+    const t12 = deck.filter(f => tierOf(f) <= 2);
+    if (t1.length < nNew || t12.length < nNew + nComf) continue;
+    for (let attempt = 0; attempt < 400; attempt++) {
+      const remaining = new Map(shuffleArr(deck.slice()).map(f => [f.id, f]));
+      const take = (pred, count) => {
+        const avail = [...remaining.values()].filter(pred);
+        const chosen = avail.slice(0, count);
+        chosen.forEach(f => remaining.delete(f.id));
+        return chosen;
+      };
+      const newPicks = take(f => tierOf(f) === 1, nNew);
+      const comfPicks = take(f => tierOf(f) <= 2, nComf);
+      const expPicks = take(() => true, nExp);
+      if (newPicks.length < nNew || comfPicks.length < nComf || expPicks.length < nExp) break;
+      const lineup = [...newPicks, ...comfPicks, ...expPicks];
+      const total = lineup.reduce((s, f) => s + f.reach, 0);
+      if (total >= target) return { lineup: lineup.map(f => f.id), dropHalf };
+    }
+  }
+  return null;
+}
+
+function startTT() {
+  const names = playerNames();
+  const tiers = ttTierStore();
+  const players = names.map((name, i) => ({ name, tier: tiers[i] || "comfortable" }));
+  const nNew = players.filter(p => p.tier === "new").length;
+  const nComf = players.filter(p => p.tier === "comfortable").length;
+  const nExp = players.filter(p => p.tier === "expert").length;
+
+  const built = buildTierLineup(nNew, nComf, nExp);
+  if (!built) {
+    $("#tt-error").textContent = nNew > 4
+      ? "Too many New players — there aren’t that many beginner-friendly factions. Mark someone Comfortable instead."
+      : "Couldn’t build a lineup that reaches the total for this class mix — try the adventurous toggle.";
+    return;
+  }
+  $("#tt-error").textContent = "";
+  tt.lineup = built.lineup;
+  tt.dropHalf = built.dropHalf;
+  tt.seats = shuffleArr(players.slice());
+  const rank = { new: 0, comfortable: 1, expert: 2 };
+  tt.pickOrder = tt.seats.map((_, i) => i).sort((a, b) => rank[tt.seats[a].tier] - rank[tt.seats[b].tier]);
+  tt.picks = [];
+  tt.phase = "pick";
+  renderTT();
+}
+
+function renderTTOrder() {
+  const ol = $("#tt-order");
+  ol.innerHTML = "";
+  tt.seats.forEach((p, i) => {
+    const pick = tt.picks.find(x => x.seatIndex === i);
+    const isCurrent = tt.phase === "pick" && i === tt.pickOrder[tt.picks.length];
+    const li = document.createElement("li");
+    li.className = (i === 0 ? "first " : "") + (isCurrent ? "current " : "") + (pick ? "done" : "");
+    li.innerHTML = `${i === 0 ? "★ " : ""}${p.name} <span class="tier-tag ${p.tier}">${TIER_LABEL[p.tier]}</span>
+      <span class="who">${pick ? byId[pick.id].name : (i === 0 ? "first player" : "waiting to pick")}</span>`;
+    ol.appendChild(li);
+  });
+}
+
+function renderTTPick() {
+  renderTTOrder();
+  const seat = tt.pickOrder[tt.picks.length];
+  const player = tt.seats[seat];
+  const maxTier = player.tier === "new" ? 1 : player.tier === "comfortable" ? 2 : 3;
+  $("#tt-pick-banner").innerHTML =
+    `<b>${player.name}</b> <span class="tier-tag ${player.tier}">${TIER_LABEL[player.tier]}</span> picks now.`;
+  $("#tt-undo").disabled = !tt.picks.length;
+  const taken = new Set(tt.picks.map(p => p.id));
+  const grid = $("#tt-pick-grid");
+  grid.innerHTML = "";
+  for (const id of tt.lineup) {
+    if (taken.has(id)) continue;
+    const f = byId[id];
+    if (tierOf(f) > maxTier) continue;
+    const card = document.createElement("button");
+    card.className = "card";
+    card.innerHTML = `<img src="${imgSrc(f)}" alt="${f.name} — ${f.type}">
+      <span class="reach-badge" title="Reach">${f.reach}</span>`;
+    card.addEventListener("click", () => {
+      tt.picks.push({ seatIndex: seat, id });
+      if (tt.picks.length === tt.pickOrder.length) tt.phase = "done";
+      renderTT();
+    });
+    grid.appendChild(card);
+  }
+}
+
+function renderTTDone() {
+  renderTTOrder();
+  const total = tt.lineup.reduce((s, id) => s + byId[id].reach, 0);
+  const rec = REACH_TARGET[playerCount];
+  const cls = total >= rec ? "ok" : total >= 17 ? "adventurous" : "bad";
+  const label = total >= rec ? "good fit" : total >= 17 ? "adventurous (17+)" : "not enough reach";
+  $("#tt-total").innerHTML =
+    `Reach <b>${total}</b> / ${rec} recommended &nbsp;<span class="stamp ${cls}">${label}</span>`;
+  const ul = $("#tt-summary");
+  ul.innerHTML = "";
+  tt.seats.forEach((p, i) => {
+    const pick = tt.picks.find(x => x.seatIndex === i);
+    const f = byId[pick.id];
+    const li = document.createElement("li");
+    li.innerHTML = `<img src="${imgSrc(f)}" alt="">
+      <div><div class="fac">${i === 0 ? "★ " : ""}${p.name} — ${f.name}
+      <span class="tier-tag ${p.tier}">${TIER_LABEL[p.tier]}</span></div>
+      <div class="sub">reach ${f.reach} · ${f.type}</div></div>`;
+    ul.appendChild(li);
+  });
+}
+
+function renderTT() {
+  for (const p of ["setup", "pick", "done"])
+    $(`#tt-${p}`).classList.toggle("hidden", tt.phase !== p);
+  if (tt.phase === "setup") {
+    renderTTPlayers();
+    $("#tt-adventurous").checked = adventurous;
+    return;
+  }
+  if (tt.phase === "pick") return renderTTPick();
+  renderTTDone();
+}
+
+function undoTT() {
+  if (!tt.picks.length) return;
+  tt.picks.pop();
+  tt.phase = "pick";
+  renderTT();
+}
+function resetTT() {
+  tt.lineup = []; tt.picks = []; tt.phase = "setup";
+  renderTT();
+}
+
+$("#tt-start-btn").addEventListener("click", startTT);
+$("#tt-undo").addEventListener("click", undoTT);
+$("#tt-undo2").addEventListener("click", undoTT);
+$("#tt-reset").addEventListener("click", resetTT);
+$("#tt-reset2").addEventListener("click", resetTT);
+
 /* ---------------- init ---------------- */
 function setAdventurous(v) {
   adventurous = v;
@@ -1645,9 +1920,10 @@ function setAdventurous(v) {
   $("#hand-adventurous").checked = v;
   $("#fav-adventurous").checked = v;
   $("#cut-adventurous").checked = v;
+  $("#tt-adventurous").checked = v;
   updateSimple();
 }
-for (const id of ["#adventurous-toggle", "#hand-adventurous", "#fav-adventurous", "#cut-adventurous"]) {
+for (const id of ["#adventurous-toggle", "#hand-adventurous", "#fav-adventurous", "#cut-adventurous", "#tt-adventurous"]) {
   $(id).addEventListener("change", e => setAdventurous(e.target.checked));
   $(id).checked = adventurous;
 }
@@ -1657,6 +1933,7 @@ renderDraftSetup();
 renderHand();
 renderFav();
 renderCut();
+renderTT();
 </script>
 </body>
 </html>

@@ -4,7 +4,7 @@ import type { Tier } from "../types";
 
 function readStorage<T>(key: string, fallback: T): T {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = window.localStorage.getItem(key);
     if (raw === null) return fallback;
     return JSON.parse(raw) as T;
   } catch {
@@ -18,7 +18,7 @@ export function useLocalStorage<T>(key: string, fallback: T): [T, (v: T | ((prev
     (v: T | ((prev: T) => T)) => {
       setValue((prev) => {
         const next = typeof v === "function" ? (v as (prev: T) => T)(prev) : v;
-        localStorage.setItem(key, JSON.stringify(next));
+        window.localStorage.setItem(key, JSON.stringify(next));
         return next;
       });
     },
@@ -37,9 +37,21 @@ export function usePlayerNames(): [string[], (v: string[]) => void] {
   return useLocalStorage<string[]>("rootpicker.playerNames", []);
 }
 
+export function usePersistedSet(
+  key: string,
+  fallback: string[] = [],
+): [Set<string>, (v: Set<string> | ((prev: Set<string>) => Set<string>)) => void] {
+  const [arr, setArr] = useLocalStorage<string[]>(key, fallback);
+  const set = (v: Set<string> | ((prev: Set<string>) => Set<string>)) =>
+    setArr((prevArr) => {
+      const next = typeof v === "function" ? v(new Set(prevArr)) : v;
+      return [...next];
+    });
+  return [new Set(arr), set];
+}
+
 export function useOwnedFactionIds(): [Set<string>, (v: Set<string>) => void] {
-  const [arr, setArr] = useLocalStorage<string[]>("rootpicker.ownedFactionIds", DEFAULT_OWNED_IDS);
-  return [new Set(arr), (next: Set<string>) => setArr([...next])];
+  return usePersistedSet("rootpicker.ownedFactionIds", DEFAULT_OWNED_IDS);
 }
 
 export function useWishCount(): [number, (v: number) => void] {

@@ -1,7 +1,8 @@
-import { useEffect, useReducer } from "react";
 import { useAppContext } from "../context/AppContext";
 import { shuffleArr } from "../lib/shuffle";
 import { findBestWishAssignment, rankLabel, wishPoints, type WishAssignment, type WishPlayer } from "../lib/wish";
+import { usePersistedReducer } from "../lib/persistedReducer";
+import { useEffectSkipFirst } from "../lib/useEffectSkipFirst";
 import { byId, REACH_TARGET } from "../data/factions";
 import { PlayerStepper } from "../components/PlayerStepper";
 import { Explainer } from "../components/Explainer";
@@ -11,6 +12,7 @@ import { OrderList, type OrderItem } from "../components/OrderList";
 import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
+import { ConfirmResetButton } from "../components/ConfirmResetButton";
 
 interface WishState {
   phase: "setup" | "pass" | "rank" | "done";
@@ -71,9 +73,9 @@ function wishReducer(state: WishState, action: WishAction): WishState {
 export function WishlistMode() {
   const { playerCount, availableFactions, playerNames, adventurous, setAdventurous, effTarget, wishCount } =
     useAppContext();
-  const [state, dispatch] = useReducer(wishReducer, initialState);
+  const [state, dispatch] = usePersistedReducer("rootpicker.session.wish", wishReducer, initialState);
 
-  useEffect(() => {
+  useEffectSkipFirst(() => {
     if (state.phase !== "setup") dispatch({ type: "RESET" });
   }, [playerCount, availableFactions]);
 
@@ -219,9 +221,7 @@ export function WishlistMode() {
       <h2>Before You Begin</h2>
       <SetupChecklist variant="standard" />
       <div className="btn-row">
-        <button className="btn secondary" onClick={() => dispatch({ type: "RESET" })}>
-          New game
-        </button>
+        <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>New game</ConfirmResetButton>
       </div>
     </section>
   );

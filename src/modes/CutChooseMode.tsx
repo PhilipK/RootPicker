@@ -1,7 +1,8 @@
-import { useEffect, useReducer } from "react";
 import { useAppContext } from "../context/AppContext";
 import { shuffleArr } from "../lib/shuffle";
 import { reachBlockReason } from "../lib/reach";
+import { usePersistedReducer } from "../lib/persistedReducer";
+import { useEffectSkipFirst } from "../lib/useEffectSkipFirst";
 import { byId, REACH_TARGET } from "../data/factions";
 import { PlayerStepper } from "../components/PlayerStepper";
 import { Explainer } from "../components/Explainer";
@@ -11,6 +12,7 @@ import { OrderList, type OrderItem } from "../components/OrderList";
 import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
+import { ConfirmResetButton } from "../components/ConfirmResetButton";
 
 interface CutPick {
   seatIndex: number;
@@ -77,11 +79,26 @@ function cutReducer(state: CutState, action: CutAction): CutState {
   }
 }
 
+// lineup is a Set, which JSON.stringify silently drops — persist it as an array instead.
+function serializeCutState(state: CutState): string {
+  return JSON.stringify({ ...state, lineup: [...state.lineup] });
+}
+function deserializeCutState(raw: string): CutState {
+  const parsed = JSON.parse(raw) as Omit<CutState, "lineup"> & { lineup: string[] };
+  return { ...parsed, lineup: new Set(parsed.lineup) };
+}
+
 export function CutChooseMode() {
   const { playerCount, availableFactions, playerNames, adventurous, setAdventurous, effTarget } = useAppContext();
-  const [state, dispatch] = useReducer(cutReducer, initialState);
+  const [state, dispatch] = usePersistedReducer(
+    "rootpicker.session.cut",
+    cutReducer,
+    initialState,
+    serializeCutState,
+    deserializeCutState,
+  );
 
-  useEffect(() => {
+  useEffectSkipFirst(() => {
     if (state.phase !== "setup") dispatch({ type: "RESET" });
   }, [playerCount, availableFactions]);
 
@@ -211,9 +228,7 @@ export function CutChooseMode() {
           <button className="btn secondary" disabled={!state.picks.length} onClick={() => dispatch({ type: "UNDO" })}>
             Undo last pick
           </button>
-          <button className="btn secondary" onClick={() => dispatch({ type: "RESET" })}>
-            Start over
-          </button>
+          <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>Start over</ConfirmResetButton>
         </div>
       </section>
     );
@@ -248,9 +263,7 @@ export function CutChooseMode() {
         <button className="btn secondary" onClick={() => dispatch({ type: "UNDO" })}>
           Undo last pick
         </button>
-        <button className="btn secondary" onClick={() => dispatch({ type: "RESET" })}>
-          New game
-        </button>
+        <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>New game</ConfirmResetButton>
       </div>
     </section>
   );

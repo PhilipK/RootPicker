@@ -1,7 +1,8 @@
-import { useEffect, useReducer } from "react";
 import { useAppContext } from "../context/AppContext";
 import { shuffleArr } from "../lib/shuffle";
 import { buildTierLineup, tierOf, TIERS, TIER_LABEL } from "../lib/tiers";
+import { usePersistedReducer } from "../lib/persistedReducer";
+import { useEffectSkipFirst } from "../lib/useEffectSkipFirst";
 import { byId, REACH_TARGET } from "../data/factions";
 import type { Tier, TieredPlayer } from "../types";
 import { Explainer } from "../components/Explainer";
@@ -10,6 +11,7 @@ import { OrderList, type OrderItem } from "../components/OrderList";
 import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
+import { ConfirmResetButton } from "../components/ConfirmResetButton";
 
 interface TTPick {
   seatIndex: number;
@@ -67,9 +69,9 @@ export function TeachingTiersMode() {
     names,
     setNames,
   } = useAppContext();
-  const [state, dispatch] = useReducer(ttReducer, initialState);
+  const [state, dispatch] = usePersistedReducer("rootpicker.session.tt", ttReducer, initialState);
 
-  useEffect(() => {
+  useEffectSkipFirst(() => {
     if (state.phase !== "setup") dispatch({ type: "RESET" });
   }, [playerCount, availableFactions]);
 
@@ -199,9 +201,7 @@ export function TeachingTiersMode() {
           <button className="btn secondary" disabled={!state.picks.length} onClick={() => dispatch({ type: "UNDO" })}>
             Undo last pick
           </button>
-          <button className="btn secondary" onClick={() => dispatch({ type: "RESET" })}>
-            Start over
-          </button>
+          <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>Start over</ConfirmResetButton>
         </div>
       </section>
     );
@@ -236,9 +236,7 @@ export function TeachingTiersMode() {
         <button className="btn secondary" onClick={() => dispatch({ type: "UNDO" })}>
           Undo last pick
         </button>
-        <button className="btn secondary" onClick={() => dispatch({ type: "RESET" })}>
-          New game
-        </button>
+        <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>New game</ConfirmResetButton>
       </div>
     </section>
   );

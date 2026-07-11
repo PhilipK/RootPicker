@@ -1,6 +1,8 @@
-import { useEffect, useReducer, useState } from "react";
+import { useState } from "react";
 import { useAppContext } from "../context/AppContext";
 import { shuffleArr } from "../lib/shuffle";
+import { usePersistedReducer } from "../lib/persistedReducer";
+import { useEffectSkipFirst } from "../lib/useEffectSkipFirst";
 import type { Faction } from "../types";
 import { PlayerStepper } from "../components/PlayerStepper";
 import { Explainer } from "../components/Explainer";
@@ -9,6 +11,7 @@ import { FactionCard } from "../components/FactionCard";
 import { OrderList, type OrderItem } from "../components/OrderList";
 import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
+import { ConfirmResetButton } from "../components/ConfirmResetButton";
 
 interface PoolSlot {
   faction: Faction;
@@ -64,10 +67,10 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
 
 export function DraftMode() {
   const { playerCount, availableFactions, playerNames } = useAppContext();
-  const [state, dispatch] = useReducer(draftReducer, initialState);
+  const [state, dispatch] = usePersistedReducer("rootpicker.session.draft", draftReducer, initialState);
   const [keepInsurgents, setKeepInsurgents] = useState(false);
 
-  useEffect(() => {
+  useEffectSkipFirst(() => {
     if (state.phase !== "setup") dispatch({ type: "RESET" });
   }, [playerCount, availableFactions]);
 
@@ -194,9 +197,7 @@ export function DraftMode() {
           <button className="btn secondary" disabled={!state.picks.length} onClick={() => dispatch({ type: "UNDO" })}>
             Undo last pick
           </button>
-          <button className="btn secondary" onClick={() => dispatch({ type: "RESET" })}>
-            Start over
-          </button>
+          <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>Start over</ConfirmResetButton>
         </div>
       </section>
     );
@@ -237,9 +238,7 @@ export function DraftMode() {
         <button className="btn secondary" onClick={() => dispatch({ type: "UNDO" })}>
           Undo last pick
         </button>
-        <button className="btn secondary" onClick={() => dispatch({ type: "RESET" })}>
-          New draft
-        </button>
+        <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>New draft</ConfirmResetButton>
       </div>
     </section>
   );

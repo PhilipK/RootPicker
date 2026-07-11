@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useAppContext } from "../context/AppContext";
 import { reachBlockReason } from "../lib/reach";
+import { usePersistedSet } from "../lib/store";
 import { PlayerStepper } from "../components/PlayerStepper";
 import { Explainer } from "../components/Explainer";
 import { FactionCard } from "../components/FactionCard";
@@ -8,7 +9,7 @@ import { ReachTracker } from "../components/ReachTracker";
 
 export function SimpleMode() {
   const { playerCount, availableFactions, adventurous, setAdventurous, effTarget } = useAppContext();
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = usePersistedSet("rootpicker.session.simple");
 
   useEffect(() => {
     const availIds = new Set(availableFactions.map((f) => f.id));

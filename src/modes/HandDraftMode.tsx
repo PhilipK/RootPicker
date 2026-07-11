@@ -1,7 +1,8 @@
-import { useEffect, useReducer } from "react";
 import { useAppContext } from "../context/AppContext";
 import { shuffleArr } from "../lib/shuffle";
 import { draftSolvable, legalIds, strongOk } from "../lib/handDraft";
+import { usePersistedReducer } from "../lib/persistedReducer";
+import { useEffectSkipFirst } from "../lib/useEffectSkipFirst";
 import { byId, REACH_TARGET } from "../data/factions";
 import { PlayerStepper } from "../components/PlayerStepper";
 import { Explainer } from "../components/Explainer";
@@ -11,6 +12,7 @@ import { OrderList, type OrderItem } from "../components/OrderList";
 import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
+import { ConfirmResetButton } from "../components/ConfirmResetButton";
 
 interface HandPick {
   seatIndex: number;
@@ -58,9 +60,9 @@ function handReducer(state: HandState, action: HandAction): HandState {
 
 export function HandDraftMode() {
   const { playerCount, availableFactions, playerNames, adventurous, setAdventurous, effTarget } = useAppContext();
-  const [state, dispatch] = useReducer(handReducer, initialState);
+  const [state, dispatch] = usePersistedReducer("rootpicker.session.hand", handReducer, initialState);
 
-  useEffect(() => {
+  useEffectSkipFirst(() => {
     if (state.phase !== "setup") dispatch({ type: "RESET" });
   }, [playerCount, availableFactions]);
 
@@ -150,9 +152,7 @@ export function HandDraftMode() {
           <button className="btn secondary" disabled={!state.picks.length} onClick={() => dispatch({ type: "UNDO" })}>
             Undo last pick
           </button>
-          <button className="btn secondary" onClick={() => dispatch({ type: "RESET" })}>
-            Start over
-          </button>
+          <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>Start over</ConfirmResetButton>
         </div>
       </section>
     );
@@ -244,9 +244,7 @@ export function HandDraftMode() {
         <button className="btn secondary" onClick={() => dispatch({ type: "UNDO" })}>
           Undo last pick
         </button>
-        <button className="btn secondary" onClick={() => dispatch({ type: "RESET" })}>
-          New deal
-        </button>
+        <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>New deal</ConfirmResetButton>
       </div>
     </section>
   );

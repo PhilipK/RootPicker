@@ -1,4 +1,3 @@
-import { useEffect, useReducer } from "react";
 import type { ReactNode } from "react";
 import { useAppContext } from "../context/AppContext";
 import { shuffleArr } from "../lib/shuffle";
@@ -13,6 +12,8 @@ import {
   type FavLocked,
   type FavLogEntry,
 } from "../lib/fav";
+import { usePersistedReducer } from "../lib/persistedReducer";
+import { useEffectSkipFirst } from "../lib/useEffectSkipFirst";
 import { byId, REACH_TARGET } from "../data/factions";
 import { PlayerStepper } from "../components/PlayerStepper";
 import { Explainer } from "../components/Explainer";
@@ -22,6 +23,7 @@ import { OrderList, type OrderItem } from "../components/OrderList";
 import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
+import { ConfirmResetButton } from "../components/ConfirmResetButton";
 
 interface FavModeState {
   phase: "setup" | "pass" | "choose" | "reveal" | "done";
@@ -155,9 +157,9 @@ function renderLogEntry(entry: FavLogEntry, seats: string[]): ReactNode {
 
 export function FavBanMode() {
   const { playerCount, availableFactions, playerNames, adventurous, setAdventurous, effTarget } = useAppContext();
-  const [state, dispatch] = useReducer(favReducer, initialState);
+  const [state, dispatch] = usePersistedReducer("rootpicker.session.fav", favReducer, initialState);
 
-  useEffect(() => {
+  useEffectSkipFirst(() => {
     if (state.phase !== "setup") dispatch({ type: "RESET" });
   }, [playerCount, availableFactions]);
 
@@ -226,9 +228,7 @@ export function FavBanMode() {
           <button className="btn" onClick={() => dispatch({ type: "SHOW" })}>
             Make my choice
           </button>
-          <button className="btn secondary" onClick={() => dispatch({ type: "RESET" })}>
-            Start over
-          </button>
+          <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>Start over</ConfirmResetButton>
         </div>
       </section>
     );
@@ -301,9 +301,7 @@ export function FavBanMode() {
           <button className="btn" onClick={() => dispatch({ type: "CONTINUE", playerCount, target: effTarget })}>
             {state.pending.length ? `Continue — ${state.pending.map((si) => state.seats[si]).join(" and ")} choose again` : "Assign the rest"}
           </button>
-          <button className="btn secondary" onClick={() => dispatch({ type: "RESET" })}>
-            Start over
-          </button>
+          <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>Start over</ConfirmResetButton>
         </div>
       </section>
     );
@@ -344,9 +342,7 @@ export function FavBanMode() {
       <h2>Before You Begin</h2>
       <SetupChecklist variant="standard" />
       <div className="btn-row">
-        <button className="btn secondary" onClick={() => dispatch({ type: "RESET" })}>
-          New game
-        </button>
+        <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>New game</ConfirmResetButton>
       </div>
     </section>
   );

@@ -1,6 +1,4 @@
 import { byId } from "../data/factions";
-import type { Faction } from "../types";
-import { shuffleArr } from "./shuffle";
 
 export const otherHalf = (id: string): string | null =>
   id === "vagabond" ? "knaves" : id === "knaves" ? "vagabond" : null;
@@ -75,7 +73,7 @@ export interface FavChoice {
 export interface FavAssigned {
   seatIndex: number;
   id: string;
-  via: "fav" | "random";
+  via: "fav" | "picked";
 }
 
 export function favStateFrom(locked: FavLocked[], playerCount: number) {
@@ -92,9 +90,11 @@ export type FavLogEntry =
   | { cls: "ban-line"; type: "ban-applied"; by: number; id: string }
   | { cls: "void-line"; type: "fav-void-banned"; by: number; id: string }
   | { cls: "void-line"; type: "fav-void-removed"; by: number; id: string }
+  | { cls: "void-line"; type: "fav-void-pair"; vagabondBy: number; knavesBy: number }
   | { cls: "void-line"; type: "fav-void-collision"; byList: number[]; id: string }
   | { cls: "void-line"; type: "fav-void-infeasible"; by: number; id: string }
   | { cls: "fav-line"; type: "fav-applied"; by: number; id: string }
+  | { cls: "fav-line"; type: "assign-applied"; by: number; id: string }
   | { cls: "ban-line"; type: "half-removed"; id: string; causeId: string };
 
 /** Reveal: bans first (ban trumps favorite), then favorites; collisions void both. */
@@ -135,6 +135,7 @@ export function resolveFavRound(
     arr.push(c);
     byFaction.set(c.id, arr);
   }
+  const candidates: FavChoice[] = [];
   for (const [id, group] of byFaction) {
     if (banned.some((b) => b.id === id)) {
       for (const c of group) {
@@ -155,53 +156,85 @@ export function resolveFavRound(
       voided.push(...group.map((c) => c.seatIndex));
       continue;
     }
-    const c = group[0];
-    const half = otherHalf(id);
-    const rest = pool.filter((p) => p !== id && p !== half);
+    candidates.push(group[0]);
+  }
+
+  // A.8.1: Vagabond and Knaves can never both survive — if both are favorited this round,
+  // neither has priority over the other, so both are voided rather than picking a "winner".
+  const vagPick = candidates.find((c) => c.id === "vagabond");
+  const knavesPick = candidates.find((c) => c.id === "knaves");
+  const liveCandidates =
+    vagPick && knavesPick
+      ? (() => {
+          log.push({ cls: "void-line", type: "fav-void-pair", vagabondBy: vagPick.seatIndex, knavesBy: knavesPick.seatIndex });
+          voided.push(vagPick.seatIndex, knavesPick.seatIndex);
+          return candidates.filter((c) => c !== vagPick && c !== knavesPick);
+        })()
+      : candidates;
+
+  // Everyone's favorite this round is checked as one joint request, not one at a time —
+  // otherwise whoever gets resolved first "spends" the table's slack and an equally valid
+  // later favorite can get voided for a shortfall that isn't really theirs.
+  if (liveCandidates.length) {
+    const ids = liveCandidates.map((c) => c.id);
+    const halves = ids
+      .map((id) => otherHalf(id))
+      .filter((h): h is string => !!h && !ids.includes(h));
+    const restPool = pool.filter((p) => !ids.includes(p) && !halves.includes(p));
     const { lockedSum, lockedMilitant, slots } = favStateFrom(locked, playerCount);
-    const f = byId[id];
-    if (!favFeasible(rest, lockedSum + f.reach, lockedMilitant || f.type === "militant", slots - 1, target)) {
-      log.push({ cls: "void-line", type: "fav-void-infeasible", by: c.seatIndex, id });
-      voided.push(c.seatIndex);
-      continue;
-    }
-    pool = pool.filter((p) => p !== id);
-    locked = [...locked, { seatIndex: c.seatIndex, id }];
-    log.push({ cls: "fav-line", type: "fav-applied", by: c.seatIndex, id });
-    if (half && pool.includes(half)) {
-      pool = pool.filter((p) => p !== half);
-      log.push({ cls: "ban-line", type: "half-removed", id: half, causeId: id });
+    const addSum = liveCandidates.reduce((s, c) => s + byId[c.id].reach, 0);
+    const addMilitant = liveCandidates.some((c) => byId[c.id].type === "militant");
+    const feasible = favFeasible(
+      restPool,
+      lockedSum + addSum,
+      lockedMilitant || addMilitant,
+      slots - liveCandidates.length,
+      target,
+    );
+    if (!feasible) {
+      for (const c of liveCandidates) {
+        log.push({ cls: "void-line", type: "fav-void-infeasible", by: c.seatIndex, id: c.id });
+        voided.push(c.seatIndex);
+      }
+    } else {
+      for (const c of liveCandidates) {
+        pool = pool.filter((p) => p !== c.id);
+        locked = [...locked, { seatIndex: c.seatIndex, id: c.id }];
+        log.push({ cls: "fav-line", type: "fav-applied", by: c.seatIndex, id: c.id });
+        const half = otherHalf(c.id);
+        if (half && pool.includes(half)) {
+          pool = pool.filter((p) => p !== half);
+          log.push({ cls: "ban-line", type: "half-removed", id: half, causeId: c.id });
+        }
+      }
     }
   }
 
   return { pool, banned, locked, log, pending: voided.sort((a, b) => a - b) };
 }
 
-/** Once nobody has anything left to ban or favorite, randomly assign a reach-safe,
-    militant-including, Vagabond/Knaves-exclusive combo to whoever isn't locked in yet. */
-export function finishFav(playerCount: number, pool: string[], locked: FavLocked[], target: number): FavAssigned[] {
-  const undecided = Array.from({ length: playerCount }, (_, i) => i).filter(
-    (i) => !locked.some((l) => l.seatIndex === i),
-  );
-  const { lockedSum, lockedMilitant } = favStateFrom(locked, playerCount);
-  const poolFactions = pool.map((id) => byId[id]);
-  const combos: Faction[][] = [];
-  (function rec(start: number, combo: Faction[]) {
-    if (combo.length === undecided.length) {
-      const sum = lockedSum + combo.reduce((s, f) => s + f.reach, 0);
-      const militant = lockedMilitant || combo.some((f) => f.type === "militant");
-      const pair = combo.some((f) => f.id === "vagabond") && combo.some((f) => f.id === "knaves");
-      if (sum >= target && militant && !pair) combos.push(combo.slice());
-      return;
-    }
-    for (let i = start; i <= poolFactions.length - (undecided.length - combo.length); i++) {
-      combo.push(poolFactions[i]);
-      rec(i + 1, combo);
-      combo.pop();
-    }
-  })(0, []);
-  const combo = shuffleArr(combos[Math.floor(Math.random() * combos.length)].slice());
-  const assigned: FavAssigned[] = locked.map((l) => ({ seatIndex: l.seatIndex, id: l.id, via: "fav" }));
-  undecided.forEach((si, i) => assigned.push({ seatIndex: si, id: combo[i].id, via: "random" }));
-  return assigned;
+/** Once nobody has anything left to ban or favorite, banners pick from what survives —
+    first to ban goes last, so banning costs you the pick order favoriting would've earned. */
+export function assignPickOrder(banned: FavBanned[]): number[] {
+  return banned
+    .slice()
+    .reverse()
+    .map((b) => b.by);
+}
+
+/** Apply one banner's pick: locks it in and, per A.8.1, drops its still-unplayed other half. */
+export function applyAssignPick(
+  pool: string[],
+  locked: FavLocked[],
+  seatIndex: number,
+  id: string,
+): { pool: string[]; locked: FavLocked[]; log: FavLogEntry[] } {
+  const half = otherHalf(id);
+  let newPool = pool.filter((p) => p !== id);
+  const log: FavLogEntry[] = [{ cls: "fav-line", type: "assign-applied", by: seatIndex, id }];
+  if (half && newPool.includes(half)) {
+    newPool = newPool.filter((p) => p !== half);
+    log.push({ cls: "ban-line", type: "half-removed", id: half, causeId: id });
+  }
+  return { pool: newPool, locked: [...locked, { seatIndex, id }], log };
 }

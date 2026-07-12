@@ -2,9 +2,10 @@ import type { ReactNode } from "react";
 import { useAppContext } from "../context/AppContext";
 import { shuffleArr } from "../lib/shuffle";
 import {
+  applyAssignPick,
+  assignPickOrder,
   favBlockReason,
   favStateFrom,
-  finishFav,
   resolveFavRound,
   type FavAssigned,
   type FavBanned,
@@ -26,7 +27,7 @@ import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
 
 interface FavModeState {
-  phase: "setup" | "pass" | "choose" | "reveal" | "done";
+  phase: "setup" | "pass" | "choose" | "reveal" | "assign-pass" | "assign-choose" | "assign-reveal" | "done";
   seats: string[];
   pool: string[];
   banned: FavBanned[];
@@ -39,6 +40,9 @@ interface FavModeState {
   log: FavLogEntry[];
   pickKind: "fav" | "ban";
   pickId: string | null;
+  assignOrder: number[];
+  assignIdx: number;
+  assignPickId: string | null;
 }
 
 const initialState: FavModeState = {
@@ -55,6 +59,9 @@ const initialState: FavModeState = {
   log: [],
   pickKind: "fav",
   pickId: null,
+  assignOrder: [],
+  assignIdx: 0,
+  assignPickId: null,
 };
 
 type FavModeAction =
@@ -64,6 +71,10 @@ type FavModeAction =
   | { type: "SET_PICK_ID"; id: string }
   | { type: "CONFIRM"; playerCount: number; target: number }
   | { type: "CONTINUE"; playerCount: number; target: number }
+  | { type: "ASSIGN_SHOW" }
+  | { type: "ASSIGN_SET_PICK"; id: string }
+  | { type: "ASSIGN_CONFIRM" }
+  | { type: "ASSIGN_CONTINUE" }
   | { type: "RESET" };
 
 function favReducer(state: FavModeState, action: FavModeAction): FavModeState {
@@ -96,7 +107,37 @@ function favReducer(state: FavModeState, action: FavModeAction): FavModeState {
     }
     case "CONTINUE": {
       if (state.pending.length) return { ...state, round: state.round + 1, phase: "pass" };
-      const assigned = finishFav(action.playerCount, state.pool, state.locked, action.target);
+      const assignOrder = assignPickOrder(state.banned);
+      if (!assignOrder.length) {
+        const assigned: FavAssigned[] = state.locked.map((l) => ({ seatIndex: l.seatIndex, id: l.id, via: "fav" }));
+        return { ...state, assigned, phase: "done" };
+      }
+      return { ...state, assignOrder, assignIdx: 0, assignPickId: null, phase: "assign-pass" };
+    }
+    case "ASSIGN_SHOW":
+      return { ...state, phase: "assign-choose", assignPickId: null };
+    case "ASSIGN_SET_PICK":
+      return { ...state, assignPickId: action.id };
+    case "ASSIGN_CONFIRM": {
+      if (state.assignPickId === null) return state;
+      const { pool, locked, log } = applyAssignPick(
+        state.pool,
+        state.locked,
+        state.assignOrder[state.assignIdx],
+        state.assignPickId,
+      );
+      return { ...state, pool, locked, log, phase: "assign-reveal" };
+    }
+    case "ASSIGN_CONTINUE": {
+      const assignIdx = state.assignIdx + 1;
+      if (assignIdx < state.assignOrder.length) {
+        return { ...state, assignIdx, assignPickId: null, phase: "assign-pass" };
+      }
+      const assigned: FavAssigned[] = state.locked.map((l) => ({
+        seatIndex: l.seatIndex,
+        id: l.id,
+        via: state.assignOrder.includes(l.seatIndex) ? "picked" : "fav",
+      }));
       return { ...state, assigned, phase: "done" };
     }
     case "RESET":
@@ -132,6 +173,14 @@ function renderLogEntry(entry: FavLogEntry, seats: string[]): ReactNode {
           other half (A.8.1) — they choose again.
         </>
       );
+    case "fav-void-pair":
+      return (
+        <>
+          {name(entry.vagabondBy)} favorited {fname("vagabond")} and {name(entry.knavesBy)} favorited{" "}
+          {fname("knaves")} — they can never both survive (A.8.1), so neither wins; both stay in the pool and
+          choose again.
+        </>
+      );
     case "fav-void-collision":
       return (
         <>
@@ -153,6 +202,8 @@ function renderLogEntry(entry: FavLogEntry, seats: string[]): ReactNode {
       );
     case "fav-applied":
       return <>♥ {name(entry.by)} plays {fname(entry.id)}.</>;
+    case "assign-applied":
+      return <>🎯 {name(entry.by)} picks {fname(entry.id)}.</>;
     case "half-removed":
       return (
         <>
@@ -181,9 +232,10 @@ export function FavBanMode() {
         <Explainer id="exp-fav" summary="How It Works">
           In secret, each player either <b>♥ favorites</b> one faction (it’s locked to them) or <b>✖ bans</b> one
           (nobody can play it). Then everything is revealed: bans trump favorites, and if two players favorited the
-          same faction it stays in the pool and both choose again — new bans allowed. Repeat until settled. Players
-          who banned get a random faction from what survives, rolled so the table makes its reach total with at
-          least one militant. The Second Vagabond sits out, and the Vagabond and Knaves can never both end up in
+          same faction it stays in the pool and both choose again — new bans allowed. Repeat until settled. Then
+          banners pick from what survives, one at a time, first-to-ban going last — so banning costs you the pick
+          order favoriting would've earned. Every pick is still constrained so the table makes its reach total with
+          at least one militant. The Second Vagabond sits out, and the Vagabond and Knaves can never both end up in
           play (A.8.1).
         </Explainer>
         <label className="note" style={{ display: "block" }}>
@@ -314,6 +366,85 @@ export function FavBanMode() {
     );
   }
 
+  if (state.phase === "assign-pass") {
+    return (
+      <section>
+        <h2>Picking Order</h2>
+        <p className="note">
+          Banners pick from what's left, first-to-ban going last:{" "}
+          {state.assignOrder.map((si) => state.seats[si]).join(", ")}.
+        </p>
+        <div className="picker-banner">
+          Pass the device to <b>{state.seats[state.assignOrder[state.assignIdx]]}</b> — only they should look.
+        </div>
+        <div className="btn-row">
+          <button className="btn" onClick={() => dispatch({ type: "ASSIGN_SHOW" })}>
+            Make my pick
+          </button>
+          <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>Start over</ConfirmResetButton>
+        </div>
+      </section>
+    );
+  }
+
+  if (state.phase === "assign-choose") {
+    const { lockedSum, lockedMilitant, slots } = favStateFrom(state.locked, playerCount);
+    return (
+      <section>
+        <div className="picker-banner">
+          <b>{state.seats[state.assignOrder[state.assignIdx]]}</b> — pick a faction from what survives.
+        </div>
+        <div className="grid">
+          {state.pool.map((id) => {
+            const f = byId[id];
+            const reason = favBlockReason("fav", id, { pool: state.pool, lockedSum, lockedMilitant, slots, target: effTarget });
+            return (
+              <div key={id}>
+                <FactionCard
+                  faction={f}
+                  reachBadge
+                  selected={state.assignPickId === id}
+                  dimmed={!!reason}
+                  disabled={!!reason}
+                  onClick={() => dispatch({ type: "ASSIGN_SET_PICK", id })}
+                />
+                {reason && <p className="pool-note">{reason}</p>}
+              </div>
+            );
+          })}
+        </div>
+        <div className="btn-row">
+          <button className="btn" disabled={!state.assignPickId} onClick={() => dispatch({ type: "ASSIGN_CONFIRM" })}>
+            {state.assignPickId ? `Pick ${byId[state.assignPickId].name}` : "Pick"}
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  if (state.phase === "assign-reveal") {
+    return (
+      <section>
+        <h2>Picked</h2>
+        <ul className="reveal-log">
+          {state.log.map((entry, i) => (
+            <li key={i} className={entry.cls}>
+              {renderLogEntry(entry, state.seats)}
+            </li>
+          ))}
+        </ul>
+        <div className="btn-row">
+          <button className="btn" onClick={() => dispatch({ type: "ASSIGN_CONTINUE" })}>
+            {state.assignIdx + 1 < state.assignOrder.length
+              ? `Continue — ${state.seats[state.assignOrder[state.assignIdx + 1]]} picks next`
+              : "Finish"}
+          </button>
+          <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>Start over</ConfirmResetButton>
+        </div>
+      </section>
+    );
+  }
+
   // done
   const total = state.assigned.reduce((s, a) => s + byId[a.id].reach, 0);
   const rec = REACH_TARGET[playerCount];
@@ -329,7 +460,7 @@ export function FavBanMode() {
         </>
       ),
       sub: `turn ${i + 1}${i === 0 ? " (first player)" : ""} · reach ${f.reach} · ${f.type} · ${
-        a.via === "fav" ? "♥ favorite" : "🎲 random"
+        a.via === "fav" ? "♥ favorite" : "🎯 picked"
       }`,
     };
   });

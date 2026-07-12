@@ -91,6 +91,7 @@ export type FavLogEntry =
   | { cls: "void-line"; type: "ban-void"; by: number; id: string }
   | { cls: "ban-line"; type: "ban-applied"; by: number; id: string }
   | { cls: "void-line"; type: "fav-void-banned"; by: number; id: string }
+  | { cls: "void-line"; type: "fav-void-removed"; by: number; id: string }
   | { cls: "void-line"; type: "fav-void-collision"; byList: number[]; id: string }
   | { cls: "void-line"; type: "fav-void-infeasible"; by: number; id: string }
   | { cls: "fav-line"; type: "fav-applied"; by: number; id: string }
@@ -138,6 +139,13 @@ export function resolveFavRound(
     if (banned.some((b) => b.id === id)) {
       for (const c of group) {
         log.push({ cls: "void-line", type: "fav-void-banned", by: c.seatIndex, id });
+        voided.push(c.seatIndex);
+      }
+      continue;
+    }
+    if (!pool.includes(id)) {
+      for (const c of group) {
+        log.push({ cls: "void-line", type: "fav-void-removed", by: c.seatIndex, id });
         voided.push(c.seatIndex);
       }
       continue;

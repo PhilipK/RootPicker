@@ -125,6 +125,13 @@ function renderLogEntry(entry: FavLogEntry, seats: string[]): ReactNode {
           {name(entry.by)} favorited {fname(entry.id)}, but the ban trumps it — they choose again.
         </>
       );
+    case "fav-void-removed":
+      return (
+        <>
+          {name(entry.by)} favorited {fname(entry.id)}, but it just left the pool — never in the same game as its
+          other half (A.8.1) — they choose again.
+        </>
+      );
     case "fav-void-collision":
       return (
         <>

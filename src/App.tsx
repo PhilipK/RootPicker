@@ -8,6 +8,7 @@ import { DraftMode } from "./modes/DraftMode";
 import { HandDraftMode } from "./modes/HandDraftMode";
 import { FavBanMode } from "./modes/FavBanMode";
 import { CutChooseMode } from "./modes/CutChooseMode";
+import { RiverfolkAuctionMode } from "./modes/RiverfolkAuctionMode";
 import { TeachingTiersMode } from "./modes/TeachingTiersMode";
 import { WishlistMode } from "./modes/WishlistMode";
 import { SettingsMode } from "./modes/SettingsMode";
@@ -34,6 +35,7 @@ function AppShell() {
         {mode === "hand" && <HandDraftMode />}
         {mode === "fav" && <FavBanMode />}
         {mode === "cut" && <CutChooseMode />}
+        {mode === "auction" && <RiverfolkAuctionMode />}
         {mode === "tt" && <TeachingTiersMode />}
         {mode === "wish" && <WishlistMode />}
         {mode === "settings" && <SettingsMode />}

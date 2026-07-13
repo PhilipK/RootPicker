@@ -7,6 +7,7 @@ const TABS: { id: ModeId; label: string }[] = [
   { id: "fav", label: "Favorite & Ban" },
   { id: "cut", label: "Cut & Choose" },
   { id: "auction", label: "Riverfolk Auction" },
+  { id: "bounty", label: "Bounty Draft" },
   { id: "tt", label: "Teaching Tiers" },
   { id: "wish", label: "Wishlist" },
   { id: "settings", label: "Settings" },

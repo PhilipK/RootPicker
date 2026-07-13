@@ -4,7 +4,13 @@ Design sketches for picker modes not yet implemented. Existing modes for referen
 Simple (free pick), Draft (Law A.8.3), Hand draft, Fav/Ban, Cut & Choose, Teaching
 Tiers, Wishlist optimizer.
 
-## Bounty Draft
+## Bounty Draft — IMPLEMENTED
+
+Now live as `src/modes/BountyDraftMode.tsx` (`ModeId: "bounty"`), turn logic in
+`src/lib/bounty.ts`. Sketch kept for the rationale. Two deltas from the sketch
+below: token count is `playerCount` (not a flat 3), and unspent tokens bank as
+VP for every claim, not just the last — so final totals are normalized to a
+0 floor (lowest total becomes 0) since only the gap between players matters.
 
 "No Thanks!"-style auction. The table prices faction strength and preference live,
 instead of anyone arguing about balance.

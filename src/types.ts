@@ -20,6 +20,7 @@ export type ModeId =
   | "fav"
   | "cut"
   | "auction"
+  | "bounty"
   | "tt"
   | "wish"
   | "settings";

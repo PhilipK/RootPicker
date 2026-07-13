@@ -76,7 +76,29 @@ function bidPickOrder(bids: number[]): number[] {
     .sort((a, b) => bids[b] - bids[a] || salt[a] - salt[b]);
 }
 
-const handicap = (bid: number) => (bid > 0 ? ` — starts at −${bid} VP` : "");
+/**
+ * Effective VP cost per seat: you never pay more than one above the highest
+ * bid strictly below yours, so overbidding blind can't cost more than needed
+ * to keep your spot (tied bids pay the same).
+ */
+function effectiveCosts(bids: number[]): number[] {
+  return bids.map((bid) => {
+    const lower = bids.filter((b) => b < bid);
+    return lower.length ? Math.min(bid, Math.max(...lower) + 1) : bid;
+  });
+}
+
+/**
+ * Starting VP per seat: effective costs shifted so the biggest spender starts
+ * at 0 and everyone else starts ahead — the Root score track has no negatives.
+ */
+export function startingBonuses(bids: number[]): number[] {
+  const costs = effectiveCosts(bids);
+  const max = Math.max(0, ...costs);
+  return costs.map((c) => max - c);
+}
+
+const startsAt = (vp: number) => ` — starts at ${vp > 0 ? `+${vp}` : "0"} VP`;
 
 export function RiverfolkAuctionMode() {
   const { playerCount, availableFactions, playerNames, adventurous, setAdventurous, effTarget } = useAppContext();
@@ -96,9 +118,11 @@ export function RiverfolkAuctionMode() {
         <NameInputs />
         <Explainer id="exp-auction" summary="How this works">
           Pick order is worth something — so buy it. Each player secretly bids <b>0–{MAX_BID} VP</b>; the highest
-          bidder picks their faction first and starts the game that many VP behind (ties broken randomly). Bid 0
-          if you don’t care and enjoy picking from what’s left with no handicap. The starting-VP handicap is a
-          house rule, not from the Law. Picks are checked so the table always reaches the required total.
+          bidder picks their faction first (ties broken randomly). Overbids are trimmed to one above the highest
+          bid below them, and since the score track has no negatives, everyone is then shifted up so the biggest
+          spender starts at 0 and the rest start with bonus VP. Bid 0 if you don’t care and enjoy picking from
+          what’s left with a head start. The starting-VP system is a house rule, not from the Law. Picks are
+          checked so the table always reaches the required total.
         </Explainer>
         <label className="note" style={{ display: "block" }}>
           <input type="checkbox" checked={adventurous} onChange={(e) => setAdventurous(e.target.checked)} />{" "}
@@ -158,7 +182,10 @@ export function RiverfolkAuctionMode() {
             </button>
           ))}
         </div>
-        <p className="note">You’ll start the game at −{bidChoice ?? 0} VP if you bid {bidChoice ?? 0}.</p>
+        <p className="note">
+          You never pay more than one above the highest bid below yours, and once all bids are in, scores are
+          shifted so the biggest spender starts at 0 — everyone else starts with bonus VP.
+        </p>
         <div className="btn-row">
           <button className="btn" disabled={bidChoice === null} onClick={lockBid}>
             Lock in my bid
@@ -169,18 +196,23 @@ export function RiverfolkAuctionMode() {
   }
 
   if (state.phase === "reveal") {
+    const bonuses = startingBonuses(state.bids);
     const items: OrderItem[] = state.pickOrder.map((seatIndex, rank) => ({
       name: state.seats[seatIndex],
       first: seatIndex === 0,
       current: rank === 0,
       done: false,
-      who: `bid ${state.bids[seatIndex]} VP — picks ${rank === 0 ? "first" : `#${rank + 1}`}${handicap(state.bids[seatIndex])}`,
+      who: `bid ${state.bids[seatIndex]} VP — picks ${rank === 0 ? "first" : `#${rank + 1}`}${startsAt(bonuses[seatIndex])}`,
     }));
     return (
       <section>
         <h2>Bids Revealed</h2>
         <OrderList items={items} />
-        <p className="note">Highest bid picks first; ties were broken randomly. ★ marks the game’s first player.</p>
+        <p className="note">
+          Highest bid picks first; ties were broken randomly. Overbids were trimmed to one above the next bid,
+          then everyone was shifted up so the biggest spender starts at 0 — no negative scores to track. ★ marks
+          the game’s first player.
+        </p>
         <div className="btn-row">
           <button className="btn" onClick={() => dispatch({ type: "BEGIN_PICKS" })}>
             Start picking
@@ -192,6 +224,7 @@ export function RiverfolkAuctionMode() {
   }
 
   if (state.phase === "pick") {
+    const bonuses = startingBonuses(state.bids);
     const seat = state.pickOrder[state.picks.length];
     const selected = new Set(state.picks.map((p) => p.id));
     const orderItems: OrderItem[] = state.pickOrder.map((seatIndex, rank) => {
@@ -210,7 +243,7 @@ export function RiverfolkAuctionMode() {
         <h2>Pick Order</h2>
         <OrderList items={orderItems} />
         <div className="picker-banner">
-          <b>{state.seats[seat]}</b> picks now{handicap(state.bids[seat])}.
+          <b>{state.seats[seat]}</b> picks now{startsAt(bonuses[seat])}.
         </div>
         <div className="grid">
           {availableFactions.map((f) => {
@@ -246,6 +279,7 @@ export function RiverfolkAuctionMode() {
   // done
   const total = state.picks.reduce((s, p) => s + byId[p.id].reach, 0);
   const rec = REACH_TARGET[playerCount];
+  const doneBonuses = startingBonuses(state.bids);
   const summaryItems: SummaryItem[] = state.seats.map((name, i) => {
     const pick = state.picks.find((p) => p.seatIndex === i)!;
     const f = byId[pick.id];
@@ -257,9 +291,7 @@ export function RiverfolkAuctionMode() {
           {name} — {f.name}
         </>
       ),
-      sub: `reach ${f.reach} · ${f.type} · bid ${state.bids[i]} VP${
-        state.bids[i] > 0 ? ` — starts at −${state.bids[i]} VP (house rule)` : " — no handicap"
-      }`,
+      sub: `reach ${f.reach} · ${f.type} · bid ${state.bids[i]} VP${startsAt(doneBonuses[i])} (house rule)`,
     };
   });
 
@@ -269,8 +301,8 @@ export function RiverfolkAuctionMode() {
       <ReachStampLine total={total} recommended={rec} />
       <SummaryList items={summaryItems} />
       <p className="note">
-        Track a bid handicap by starting that player’s score marker the bid amount before “0” — they must earn
-        those points back before they truly score.
+        Start each player’s score marker on the value shown above — the biggest spender starts at 0 and everyone
+        else starts ahead, so there are no negative scores to track.
       </p>
       <h2>Before You Begin</h2>
       <SetupChecklist variant="standard" />

@@ -260,14 +260,25 @@ export function FavBanMode() {
 
   const orderItems: OrderItem[] = state.seats.map((name, i) => {
     const lock = state.locked.find((l) => l.seatIndex === i);
+    const isCurrent = i === state.pending[state.choiceIdx];
     const waiting = state.pending.slice(state.choiceIdx).includes(i);
     const chosen = state.pending.slice(0, state.choiceIdx).includes(i);
     return {
       name,
       first: i === 0,
-      current: i === state.pending[state.choiceIdx],
+      current: isCurrent,
       done: !!lock || chosen,
-      who: lock ? `♥ ${byId[lock.id].name}` : chosen ? "has chosen" : waiting ? "choosing this round" : i === 0 ? "first player" : `turn ${i + 1}`,
+      who: lock
+        ? `♥ ${byId[lock.id].name}`
+        : chosen
+          ? "has chosen"
+          : isCurrent
+            ? "up now"
+            : waiting
+              ? "choosing this round"
+              : i === 0
+                ? "first player"
+                : `turn ${i + 1}`,
     };
   });
 

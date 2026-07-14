@@ -200,7 +200,7 @@ export function CutChooseMode() {
       first: i === 0,
       current: isCurrent,
       done: !!pick,
-      who: pick ? byId[pick.id].name : i === 0 ? "first player" : "waiting to pick",
+      who: pick ? byId[pick.id].name : isCurrent ? "up now" : i === 0 ? "first player" : `turn ${i + 1}`,
     };
   });
 

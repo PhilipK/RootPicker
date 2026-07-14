@@ -174,7 +174,7 @@ export function TeachingTiersMode() {
       first: i === firstSeat,
       current: isCurrent,
       done: !!pick,
-      who: pick ? byId[pick.id].name : i === firstSeat ? "first player" : "waiting to pick",
+      who: pick ? byId[pick.id].name : isCurrent ? "up now" : i === firstSeat ? "first player" : `turn ${i + 1}`,
       nameExtra: <span className={`tier-tag ${p.tier}`}>{TIER_LABEL[p.tier]}</span>,
     };
   });

@@ -46,6 +46,15 @@ header .rule::before, header .rule::after {
 header .rule svg { width: 20px; height: 20px; flex: 0 0 auto; fill: var(--ink-soft); }
 header p { margin: 2px 0 0; color: var(--ink-soft); font-style: italic; font-size: .95rem; }
 
+@media (max-width: 600px) {
+  header { padding: 10px 12px 2px; }
+  header h1 { font-size: clamp(1.3rem, 6.5vw, 1.7rem); letter-spacing: .08em; }
+  header .rule { width: min(220px, 60%); margin: 6px auto 2px; }
+  header .rule svg { width: 14px; height: 14px; }
+  header p { display: none; }
+  .player-bar { margin: 8px 0 0; }
+}
+
 /* ---------- tabs ---------- */
 nav {
   display: flex; justify-content: center; gap: 6px; margin: 18px 0 8px; flex-wrap: wrap;
@@ -70,7 +79,7 @@ nav button:hover { color: var(--ink); }
   nav button { flex: 0 0 auto; scroll-snap-align: start; white-space: nowrap; }
 }
 nav button:focus-visible, .btn:focus-visible, .card:focus-visible, .player-bar button:focus-visible,
-input:focus-visible {
+.stepper button:focus-visible, input:focus-visible {
   outline: 3px solid var(--gold); outline-offset: 2px;
 }
 
@@ -91,6 +100,23 @@ input:focus-visible {
 }
 .player-bar button:hover:not(:disabled) { background: var(--gold); color: var(--paper); }
 .player-bar button:disabled { opacity: .35; cursor: default; }
+
+/* ---------- wishlist picks stepper ---------- */
+.stepper {
+  display: inline-flex; align-items: center; gap: 10px;
+  margin: 8px 0; padding: 5px 6px;
+  border: 1px solid var(--gold); border-radius: 999px;
+  background: var(--paper); box-shadow: inset 0 1px 2px rgba(58,46,28,.08);
+}
+.stepper .count { font-size: 1.3rem; font-weight: 700; color: var(--ink); min-width: 1.2em; text-align: center; }
+.stepper button {
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid var(--ink); background: var(--paper-deep); color: var(--ink);
+  font-size: 1.15rem; font-family: var(--serif); cursor: pointer; line-height: 1;
+  transition: background .15s ease;
+}
+.stepper button:hover:not(:disabled) { background: var(--gold); color: var(--paper); }
+.stepper button:disabled { opacity: .35; cursor: default; }
 
 .view-toggle-row { display: flex; margin: 10px 0 18px; }
 .link-btn {
@@ -142,6 +168,7 @@ details.explainer .note { margin: 0; padding: 0 12px 10px; }
   box-shadow: 0 1px 3px rgba(58,46,28,.25);
 }
 .card:hover { transform: translateY(-2px); box-shadow: 0 4px 9px rgba(58,46,28,.3); }
+.card:active { transform: translateY(0) scale(.98); }
 .card-media { position: relative; aspect-ratio: 1 / 1; overflow: hidden; background: var(--paper); }
 .card img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .card .card-name {
@@ -208,6 +235,8 @@ details.explainer .note { margin: 0; padding: 0 12px 10px; }
 @media (prefers-reduced-motion: no-preference) {
   .stamp:not(.neutral) { animation: stampIn .25s ease-out; }
   @keyframes stampIn { from { transform: scale(1.6) rotate(-3deg); opacity: 0; } to { transform: scale(1) rotate(-3deg); opacity: 1; } }
+  .card.selected .card-media::after, .card.selected-ban .card-media::after { animation: badgePop .22s ease-out; }
+  @keyframes badgePop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 }
 
 .track { position: relative; height: 26px; margin-top: 10px;

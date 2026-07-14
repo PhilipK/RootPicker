@@ -149,7 +149,7 @@ export function DraftMode() {
         first: i === 0,
         current: i === currentPicker,
         done: !!pick,
-        who: pick ? state.pool[pick.poolIndex].faction.name : i === 0 ? "first player" : `turn ${i + 1}`,
+        who: pick ? state.pool[pick.poolIndex].faction.name : i === currentPicker ? "up now" : i === 0 ? "first player" : `turn ${i + 1}`,
       };
     });
 

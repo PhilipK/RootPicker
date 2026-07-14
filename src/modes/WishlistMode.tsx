@@ -127,7 +127,7 @@ export function WishlistMode() {
       first: i === 0,
       current: isCurrent,
       done: submitted,
-      who: submitted ? "picks locked in" : i === 0 ? "first player" : "waiting",
+      who: submitted ? "picks locked in" : isCurrent ? "up now" : i === 0 ? "first player" : `turn ${i + 1}`,
     };
   });
 

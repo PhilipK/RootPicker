@@ -131,7 +131,7 @@ export function HandDraftMode() {
       first: i === 0,
       current: isCurrent,
       done: !!pick,
-      who: pick ? byId[pick.factionId].name : i === 0 ? "first player" : `turn ${i + 1}`,
+      who: pick ? byId[pick.factionId].name : isCurrent ? "up now" : i === 0 ? "first player" : `turn ${i + 1}`,
     };
   });
 

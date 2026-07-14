@@ -1,8 +1,9 @@
 import { reachBlockReason } from "./reach";
 import type { Faction } from "../types";
 
-/** Tickets each player gets to spread across factions. */
-export const RAFFLE_TICKETS = 10;
+/** Bounds for the configurable per-player ticket budget (Settings). */
+export const MIN_RAFFLE_TICKETS = 1;
+export const MAX_RAFFLE_TICKETS = 20;
 
 export interface RaffleTicket {
   seatIndex: number;

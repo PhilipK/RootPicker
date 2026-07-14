@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
-import { useActiveMode } from "./store";
+import { useActiveMode, useRaffleTicketCountOverride } from "./store";
 
 /** Reset the shared jsdom location/history between tests so hash-routing
  *  state from one test can't leak into the next. */
@@ -79,5 +79,28 @@ describe("useActiveMode — hash routing", () => {
     const { result } = renderHook(() => useActiveMode());
     act(() => result.current[1]("bounty"));
     expect(JSON.parse(window.localStorage.getItem("rootpicker.mode")!)).toBe("bounty");
+  });
+});
+
+describe("useRaffleTicketCountOverride", () => {
+  it("has no override until one is set — callers default it to player count", () => {
+    const { result } = renderHook(() => useRaffleTicketCountOverride());
+    expect(result.current[0]).toBeNull();
+  });
+
+  it("clamps a set override to [1, 20]", () => {
+    const { result } = renderHook(() => useRaffleTicketCountOverride());
+    act(() => result.current[1](99));
+    expect(result.current[0]).toBe(20);
+    act(() => result.current[1](0));
+    expect(result.current[0]).toBe(1);
+  });
+
+  it("returns to null (auto) when reset", () => {
+    const { result } = renderHook(() => useRaffleTicketCountOverride());
+    act(() => result.current[1](7));
+    expect(result.current[0]).toBe(7);
+    act(() => result.current[1](null));
+    expect(result.current[0]).toBeNull();
   });
 });

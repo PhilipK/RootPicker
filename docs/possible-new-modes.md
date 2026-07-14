@@ -315,9 +315,10 @@ proportional to declared want, lottery thrill on the draw.
 
 ### Rules
 
-1. Shuffle seats. Device passes around: each player secretly spreads 10
-   tickets across any factions (Second Vagabond excluded). All-in is greed,
-   spreading is a hedge.
+1. Shuffle seats. Device passes around: each player secretly spreads their
+   ticket budget across any factions (Second Vagabond excluded). All-in is
+   greed, spreading is a hedge. Budget defaults to the player count and is
+   adjustable in Settings (1–20).
 2. All tickets go into one urn, shuffled. Tickets are drawn one at a time on
    the shared screen — a big reveal button, with a fast-forward.
 3. A drawn ticket assigns its faction to its player UNLESS the faction is
@@ -334,8 +335,8 @@ proportional to declared want, lottery thrill on the draw.
 
 ### Why fair
 
-Equal budgets, proportional influence: 10-on-Vagabond vs 2-on-Vagabond is
-10:2 odds. Not strategyproof — concentration gambling is the point, and the
+Equal budgets, proportional influence: an all-in vs. a split bet is settled
+by the exact ratio of tickets on the line. Not strategyproof — concentration gambling is the point, and the
 Explainer says tickets are lottery entries, not orders. A table that
 collectively all-ins on insurgents spends the slack early and the rest
 random-fill militants; honest behavior, flagged up front.
@@ -359,6 +360,9 @@ deterministic and unit-testable (`src/lib/raffle.test.ts`). Draw phase renders
 touches scoring.
 
 Tuning / open questions:
-- 10 tickets is a guess; fewer = coarser preference, more random fill.
+- Ticket budget defaults to player count (`rootpicker.raffleTicketCount`
+  override, `null` = auto) and is a Settings stepper, clamped 1–20 — fewer is
+  coarser preference and more random fill, more is finer-grained but slower
+  to draw.
 - Burned tickets are shown live as they're drawn — the drama is the point. If
   that drags at 6 players, a "draw all" exists.

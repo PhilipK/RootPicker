@@ -3,7 +3,6 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { AppProvider } from "../context/AppContext";
 import { RaffleMode } from "./RaffleMode";
 import { REACH_TARGET } from "../data/factions";
-import { RAFFLE_TICKETS } from "../lib/raffle";
 
 function renderRaffle() {
   return render(
@@ -51,14 +50,14 @@ describe("RaffleMode happy path (default 4 players)", () => {
     expect(reach).toBeGreaterThanOrEqual(REACH_TARGET[4]);
   });
 
-  it("caps a player at the ticket budget", () => {
+  it("caps a player at the ticket budget (default: matches player count)", () => {
     renderRaffle();
     start();
     fireEvent.click(screen.getByRole("button", { name: /show me/i }));
     const grid = document.querySelector(".grid")!;
     const card = grid.querySelector("button")!;
-    for (let i = 0; i < RAFFLE_TICKETS + 5; i++) fireEvent.click(card);
-    expect(screen.getByText(/drop my 10 tickets in the urn/i)).toBeInTheDocument();
+    for (let i = 0; i < 10; i++) fireEvent.click(card); // way past the 4-player default budget
+    expect(screen.getByText(/drop my 4 tickets in the urn/i)).toBeInTheDocument();
   });
 
   it("removes the last ticket on request", () => {

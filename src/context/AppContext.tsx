@@ -6,6 +6,7 @@ import {
   useOwnedFactionIds,
   usePlayerCount,
   usePlayerNames,
+  useRaffleTicketCountOverride,
   useTierAssignments,
   useViewMode,
   useWishCount,
@@ -29,6 +30,13 @@ interface AppContextValue {
   setViewMode: (v: "grid" | "list") => void;
   tiers: Tier[];
   setTiers: (v: Tier[]) => void;
+  /** Effective raffle ticket budget: the override once set, else the
+      current player count. */
+  raffleTicketCount: number;
+  /** Whether that value is still tracking player count (no override yet). */
+  raffleTicketCountIsAuto: boolean;
+  setRaffleTicketCount: (n: number) => void;
+  resetRaffleTicketCount: () => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -41,9 +49,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [adventurous, setAdventurous] = useAdventurous();
   const [viewMode, setViewMode] = useViewMode();
   const [tiers, setTiers] = useTierAssignments();
+  const [raffleTicketOverride, setRaffleTicketOverride] = useRaffleTicketCountOverride();
 
   const availableFactions = useMemo(() => computeAvailableFactions(ownedIds), [ownedIds]);
   const effTarget = computeEffTarget(playerCount, adventurous);
+  const raffleTicketCount = raffleTicketOverride ?? playerCount;
 
   const playerNames = () =>
     Array.from({ length: playerCount }, (_, i) => (names[i] || "").trim() || `Player ${i + 1}`);
@@ -66,6 +76,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setViewMode,
     tiers,
     setTiers,
+    raffleTicketCount,
+    raffleTicketCountIsAuto: raffleTicketOverride === null,
+    setRaffleTicketCount: setRaffleTicketOverride,
+    resetRaffleTicketCount: () => setRaffleTicketOverride(null),
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

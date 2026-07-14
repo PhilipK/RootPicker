@@ -1,9 +1,21 @@
 import { DEFAULT_OWNED_IDS, FACTIONS } from "../data/factions";
 import { useAppContext } from "../context/AppContext";
+import { MAX_RAFFLE_TICKETS, MIN_RAFFLE_TICKETS } from "../lib/raffle";
 import { FactionCard } from "../components/FactionCard";
 
 export function SettingsMode() {
-  const { viewMode, setViewMode, wishCount, setWishCount, ownedIds, setOwnedIds } = useAppContext();
+  const {
+    viewMode,
+    setViewMode,
+    wishCount,
+    setWishCount,
+    raffleTicketCount,
+    raffleTicketCountIsAuto,
+    setRaffleTicketCount,
+    resetRaffleTicketCount,
+    ownedIds,
+    setOwnedIds,
+  } = useAppContext();
 
   const toggleOwned = (id: string) => {
     const next = new Set(ownedIds);
@@ -40,6 +52,40 @@ export function SettingsMode() {
           +
         </button>
       </div>
+
+      <h2>Woodland Raffle</h2>
+      <p className="note">
+        How many tickets each player gets to spread across factions.{" "}
+        {raffleTicketCountIsAuto ? (
+          <>Matches your player count until you change it here.</>
+        ) : (
+          <>Fixed at this number regardless of player count.</>
+        )}
+      </p>
+      <div className="stepper">
+        <button
+          aria-label="Fewer tickets"
+          disabled={raffleTicketCount <= MIN_RAFFLE_TICKETS}
+          onClick={() => setRaffleTicketCount(raffleTicketCount - 1)}
+        >
+          −
+        </button>
+        <span className="count">{raffleTicketCount}</span>
+        <button
+          aria-label="More tickets"
+          disabled={raffleTicketCount >= MAX_RAFFLE_TICKETS}
+          onClick={() => setRaffleTicketCount(raffleTicketCount + 1)}
+        >
+          +
+        </button>
+      </div>
+      {!raffleTicketCountIsAuto && (
+        <div className="btn-row">
+          <button className="btn secondary" onClick={resetRaffleTicketCount}>
+            Match player count again
+          </button>
+        </div>
+      )}
 
       <h2>Your Collection</h2>
       <p className="note">

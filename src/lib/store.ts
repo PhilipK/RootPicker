@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { DEFAULT_OWNED_IDS } from "../data/factions";
+import { MAX_RAFFLE_TICKETS, MIN_RAFFLE_TICKETS } from "./raffle";
 import type { ModeId, Tier } from "../types";
 
 const MODE_IDS: ModeId[] = [
@@ -97,6 +98,16 @@ export function useViewMode(): ["grid" | "list", (v: "grid" | "list") => void] {
 
 export function useTierAssignments(): [Tier[], (v: Tier[]) => void] {
   return useLocalStorage<Tier[]>("rootpicker.tiers", []);
+}
+
+/** Raffle ticket budget per player. `null` means "no override yet" — the
+    caller defaults it to the current player count, so a fresh install scales
+    with the table instead of shipping a fixed guess. Once set, it's an
+    explicit override and stays put even if player count changes later. */
+export function useRaffleTicketCountOverride(): [number | null, (v: number | null) => void] {
+  const [v, setV] = useLocalStorage<number | null>("rootpicker.raffleTicketCount", null);
+  const clamp = (n: number) => Math.min(MAX_RAFFLE_TICKETS, Math.max(MIN_RAFFLE_TICKETS, n));
+  return [v === null ? null : clamp(v), (n: number | null) => setV(n === null ? null : clamp(n))];
 }
 
 export function useExplainerOpen(id: string): [boolean, (v: boolean) => void] {

@@ -1,13 +1,6 @@
 import { useAppContext } from "../context/AppContext";
 import { shuffleArr } from "../lib/shuffle";
-import {
-  fillRemaining,
-  resolveTicket,
-  ticketsToUrn,
-  RAFFLE_TICKETS,
-  type RaffleEvent,
-  type RaffleTicket,
-} from "../lib/raffle";
+import { fillRemaining, resolveTicket, ticketsToUrn, type RaffleEvent, type RaffleTicket } from "../lib/raffle";
 import { usePersistedReducer } from "../lib/persistedReducer";
 import { useEffectSkipFirst } from "../lib/useEffectSkipFirst";
 import { byId, REACH_TARGET } from "../data/factions";
@@ -28,7 +21,7 @@ interface RaffleState {
   phase: "setup" | "pass" | "tickets" | "draw" | "done";
   seats: string[];
   turn: number;
-  /** tickets[seatIndex] = one faction id per ticket, in tap order (≤ RAFFLE_TICKETS) */
+  /** tickets[seatIndex] = one faction id per ticket, in tap order (≤ the configured budget) */
   tickets: string[][];
   /** the shuffled urn, fixed when the last player submits */
   urn: RaffleTicket[];
@@ -59,7 +52,7 @@ const initialState: RaffleState = {
 type RaffleAction =
   | { type: "START"; seats: string[] }
   | { type: "SHOW" }
-  | { type: "ADD_TICKET"; id: string }
+  | { type: "ADD_TICKET"; id: string; limit: number }
   | { type: "REMOVE_LAST_TICKET" }
   | { type: "SUBMIT"; urn?: RaffleTicket[]; fillSeats?: number[]; fillFactions?: string[] }
   | { type: "DRAW"; count: number; available: Faction[]; target: number }
@@ -94,7 +87,7 @@ function raffleReducer(state: RaffleState, action: RaffleAction): RaffleState {
     case "SHOW":
       return { ...state, phase: "tickets" };
     case "ADD_TICKET": {
-      if (state.tickets[state.turn].length >= RAFFLE_TICKETS) return state;
+      if (state.tickets[state.turn].length >= action.limit) return state;
       const tickets = state.tickets.map((t, i) => (i === state.turn ? [...t, action.id] : t));
       return { ...state, tickets };
     }
@@ -180,7 +173,8 @@ function eventLine(ev: RaffleEvent, seats: string[], firstSeat: number): { cls: 
 }
 
 export function RaffleMode() {
-  const { playerCount, availableFactions, playerNames, adventurous, setAdventurous, effTarget } = useAppContext();
+  const { playerCount, availableFactions, playerNames, adventurous, setAdventurous, effTarget, raffleTicketCount } =
+    useAppContext();
   const [state, dispatch] = usePersistedReducer("rootpicker.session.raffle", raffleReducer, initialState);
 
   const rafflePool = availableFactions.filter((f) => f.id !== "vagabond2");
@@ -207,7 +201,7 @@ export function RaffleMode() {
     return (
       <section>
         <Explainer id="exp-raffle" summary="How this works">
-          Every player secretly spreads <b>{RAFFLE_TICKETS} raffle tickets</b> across the factions they want —
+          Every player secretly spreads <b>{raffleTicketCount} raffle tickets</b> across the factions they want —
           all-in on one is greed, spreading out is a hedge. All tickets go into one urn and are drawn one at a
           time on the shared screen. A drawn ticket wins its faction for its player — and every ticket that can
           no longer win (the winner's leftovers, rival tickets on the claimed faction, anything the reach math
@@ -215,7 +209,7 @@ export function RaffleMode() {
           not orders: bad bets cost exactly their own weight. When the urn empties, anyone still empty-handed
           gets a random reach-safe faction from the leftovers, and the first player filled that way opens the
           game as compensation. This structure is a
-          house rule, not from the Law, but nothing about scoring changes.
+          house rule, not from the Law, but nothing about scoring changes. Adjust the ticket budget in Settings.
         </Explainer>
         <SetupHero />
         <h2>Seats</h2>
@@ -259,7 +253,7 @@ export function RaffleMode() {
   if (state.phase === "pass" || state.phase === "tickets") {
     const seat = state.turn;
     const list = state.tickets[seat];
-    const left = RAFFLE_TICKETS - list.length;
+    const left = raffleTicketCount - list.length;
     const counts = new Map<string, number>();
     for (const id of list) counts.set(id, (counts.get(id) ?? 0) + 1);
 
@@ -290,7 +284,7 @@ export function RaffleMode() {
                   rankBadge={n > 0 ? n : undefined}
                   disabled={left === 0 && n === 0}
                   title={left === 0 && n === 0 ? "No tickets left — remove one first" : undefined}
-                  onClick={() => dispatch({ type: "ADD_TICKET", id: f.id })}
+                  onClick={() => dispatch({ type: "ADD_TICKET", id: f.id, limit: raffleTicketCount })}
                 />
               );
             })}

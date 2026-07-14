@@ -1,0 +1,238 @@
+/* ============================================================
+   Landing / mode-select screen + active-mode back bar
+   Styled as the contents page of the Law of Root rulebook.
+   All selectors namespaced so nothing here leaks into modes.
+   ============================================================ */
+
+/* ---------- landing ---------- */
+.mode-select {
+  margin: 18px 0 8px;
+}
+.mode-select-intro {
+  text-align: center;
+  color: var(--ink-soft);
+  font-style: italic;
+  font-size: 1rem;
+  margin: 0 auto 20px;
+  max-width: 34em;
+}
+
+.mode-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+  gap: 14px;
+}
+.mode-grid > li {
+  display: flex;
+}
+
+/* each card is the button itself */
+.mode-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  padding: 14px 16px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--paper);
+  box-shadow: 0 1px 3px rgba(58, 46, 28, 0.25);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.mode-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 9px rgba(58, 46, 28, 0.3);
+}
+.mode-card:active {
+  transform: translateY(0) scale(0.99);
+}
+
+/* icon medallion */
+.mode-card-icon {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--ink-soft);
+  border-radius: 50%;
+  background: var(--paper-deep);
+  color: var(--ink);
+}
+.mode-card-icon svg {
+  width: 27px;
+  height: 27px;
+}
+
+.mode-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.mode-card-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+}
+.mode-card-name {
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  font-size: 1.18rem;
+  line-height: 1.1;
+  color: var(--ink);
+}
+.mode-card-desc {
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: var(--ink);
+}
+.mode-card-best {
+  font-size: 0.88rem;
+  font-style: italic;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+.mode-card-best-label {
+  font-style: normal;
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+  color: var(--moss);
+}
+.mode-card-best-label::after {
+  content: ":";
+}
+
+/* small tags */
+.mode-tag {
+  flex: 0 0 auto;
+  font-size: 0.66rem;
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+  padding: 1px 7px;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+  line-height: 1.5;
+  align-self: center;
+}
+.mode-tag.house {
+  color: var(--gold);
+}
+.mode-tag.progress {
+  color: var(--moss);
+}
+
+/* ---------- settings, set apart from the game modes ---------- */
+.mode-settings-row {
+  display: flex;
+  justify-content: center;
+  margin: 24px 0 6px;
+  padding-top: 18px;
+  border-top: 3px double var(--ink-soft);
+}
+.mode-settings-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font: inherit;
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+  font-size: 1rem;
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 10px;
+}
+.mode-settings-link:hover {
+  color: var(--ink);
+}
+.mode-settings-icon {
+  display: inline-flex;
+}
+.mode-settings-icon svg {
+  width: 20px;
+  height: 20px;
+}
+.mode-settings-sub {
+  font-variant: normal;
+  letter-spacing: 0;
+  font-style: italic;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+/* ---------- active-mode back bar (replaces the tab strip) ---------- */
+.mode-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--ink-soft);
+}
+.mode-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: inherit;
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px 4px 2px;
+}
+.mode-back:hover {
+  color: var(--ink);
+}
+.mode-back-arrow {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+}
+.mode-bar-title {
+  font-variant: small-caps;
+  letter-spacing: 0.07em;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--ink);
+}
+.mode-bar-title::before {
+  content: "";
+  display: inline-block;
+  width: 1px;
+  height: 1em;
+  margin-right: 12px;
+  vertical-align: -0.12em;
+  background: var(--ink-soft);
+}
+
+/* ---------- focus, matching the app's gold outline ---------- */
+.mode-card:focus-visible,
+.mode-settings-link:focus-visible,
+.mode-back:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  .mode-grid {
+    grid-template-columns: 1fr;
+  }
+  .mode-settings-sub {
+    display: none;
+  }
+}

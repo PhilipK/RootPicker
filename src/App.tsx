@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import { AppProvider, useAppContext } from "./context/AppContext";
 import { useActiveMode } from "./lib/store";
 import { Header } from "./components/Header";
-import { Nav } from "./components/Nav";
+import { ModeSelect } from "./components/ModeSelect";
+import { ModeBar } from "./components/ModeBar";
 import { SimpleMode } from "./modes/SimpleMode";
 import { DraftMode } from "./modes/DraftMode";
 import { HandDraftMode } from "./modes/HandDraftMode";
@@ -30,17 +31,23 @@ function AppShell() {
     <>
       <Header />
       <main>
-        <Nav mode={mode} onChange={setMode} />
-        {mode === "simple" && <SimpleMode />}
-        {mode === "draft" && <DraftMode />}
-        {mode === "hand" && <HandDraftMode />}
-        {mode === "fav" && <FavBanMode />}
-        {mode === "cut" && <CutChooseMode />}
-        {mode === "auction" && <RiverfolkAuctionMode />}
-        {mode === "bounty" && <BountyDraftMode />}
-        {mode === "tt" && <TeachingTiersMode />}
-        {mode === "wish" && <WishlistMode />}
-        {mode === "settings" && <SettingsMode />}
+        {mode === "home" ? (
+          <ModeSelect onSelect={setMode} />
+        ) : (
+          <>
+            <ModeBar mode={mode} onBack={() => setMode("home")} />
+            {mode === "simple" && <SimpleMode />}
+            {mode === "draft" && <DraftMode />}
+            {mode === "hand" && <HandDraftMode />}
+            {mode === "fav" && <FavBanMode />}
+            {mode === "cut" && <CutChooseMode />}
+            {mode === "auction" && <RiverfolkAuctionMode />}
+            {mode === "bounty" && <BountyDraftMode />}
+            {mode === "tt" && <TeachingTiersMode />}
+            {mode === "wish" && <WishlistMode />}
+            {mode === "settings" && <SettingsMode />}
+          </>
+        )}
       </main>
     </>
   );

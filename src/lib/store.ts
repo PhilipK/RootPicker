@@ -19,6 +19,13 @@ function isModeId(v: unknown): v is ModeId {
   return typeof v === "string" && (MODE_IDS as string[]).includes(v);
 }
 
+/** "home" is the landing / mode-select screen; not a real mode, so it lives outside ModeId. */
+export type ActiveMode = ModeId | "home";
+
+function isActiveMode(v: unknown): v is ActiveMode {
+  return v === "home" || isModeId(v);
+}
+
 function readStorage<T>(key: string, fallback: T): T {
   try {
     const raw = window.localStorage.getItem(key);
@@ -93,7 +100,31 @@ export function useExplainerOpen(id: string): [boolean, (v: boolean) => void] {
   return useLocalStorage<boolean>(`rootpicker.explainerOpen.${id}`, true);
 }
 
-export function useActiveMode(): [ModeId, (v: ModeId) => void] {
-  const [v, setV] = useLocalStorage<ModeId>("rootpicker.mode", "simple");
-  return [isModeId(v) ? v : "simple", setV];
+export function useActiveMode(): [ActiveMode, (v: ActiveMode) => void] {
+  // First-time visitors (no stored value) land on "home". Legacy stored values
+  // like "simple" are still honored, so a reload mid-mode returns to that mode.
+  const [v, setV] = useLocalStorage<ActiveMode>("rootpicker.mode", "home");
+  return [isActiveMode(v) ? v : "home", setV];
+}
+
+/**
+ * Cheap best-effort check of whether a mode has a session in progress, read
+ * straight from its persisted localStorage key. Simple mode stores an array of
+ * chosen faction ids; every reducer mode stores an object whose `phase` starts
+ * at "setup". Anything past that counts as in progress.
+ */
+export function modeHasProgress(mode: ModeId): boolean {
+  if (mode === "settings") return false;
+  try {
+    const raw = window.localStorage.getItem(`rootpicker.session.${mode}`);
+    if (raw === null) return false;
+    const parsed = JSON.parse(raw) as unknown;
+    if (Array.isArray(parsed)) return parsed.length > 0;
+    if (parsed && typeof parsed === "object" && "phase" in parsed) {
+      return (parsed as { phase: unknown }).phase !== "setup";
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }

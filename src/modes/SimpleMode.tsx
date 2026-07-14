@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { useAppContext } from "../context/AppContext";
 import { reachBlockReason } from "../lib/reach";
 import { usePersistedSet } from "../lib/store";
-import { PlayerStepper } from "../components/PlayerStepper";
 import { Explainer } from "../components/Explainer";
 import { FactionCard } from "../components/FactionCard";
 import { ReachTracker } from "../components/ReachTracker";
@@ -36,8 +35,6 @@ export function SimpleMode() {
 
   return (
     <section>
-      <h2>Players</h2>
-      <PlayerStepper />
       <Explainer id="exp-simple" summary="How this works">
         Everyone picks freely. The Law asks the chosen factions’ reach to add up to the recommended total for
         your player count (Law 5.2). Any mix of 17+ is allowed for adventurous groups.

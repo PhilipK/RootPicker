@@ -1,3 +1,5 @@
+import { PlayerCountBar } from "./PlayerCountBar";
+
 export function Header() {
   return (
     <header>
@@ -9,6 +11,7 @@ export function Header() {
         </svg>
       </div>
       <p>per the Law of Root, October 2025</p>
+      <PlayerCountBar />
     </header>
   );
 }

@@ -4,7 +4,6 @@ import { shuffleArr } from "../lib/shuffle";
 import { usePersistedReducer } from "../lib/persistedReducer";
 import { useEffectSkipFirst } from "../lib/useEffectSkipFirst";
 import type { Faction } from "../types";
-import { PlayerStepper } from "../components/PlayerStepper";
 import { Explainer } from "../components/Explainer";
 import { NameInputs } from "../components/NameInputs";
 import { FactionCard } from "../components/FactionCard";
@@ -113,8 +112,7 @@ export function DraftMode() {
   if (state.phase === "setup") {
     return (
       <section>
-        <h2>Players &amp; Seats <span className="law-ref">(A.4)</span></h2>
-        <PlayerStepper />
+        <h2>Seats <span className="law-ref">(A.4)</span></h2>
         <p className="note">Names are optional. Seating order and first player are randomized when you deal.</p>
         <NameInputs />
 

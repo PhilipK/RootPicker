@@ -5,7 +5,6 @@ import { reachBlockReason } from "../lib/reach";
 import { usePersistedReducer } from "../lib/persistedReducer";
 import { useEffectSkipFirst } from "../lib/useEffectSkipFirst";
 import { byId, REACH_TARGET } from "../data/factions";
-import { PlayerStepper } from "../components/PlayerStepper";
 import { Explainer } from "../components/Explainer";
 import { NameInputs } from "../components/NameInputs";
 import { FactionCard } from "../components/FactionCard";
@@ -112,8 +111,7 @@ export function RiverfolkAuctionMode() {
   if (state.phase === "setup") {
     return (
       <section>
-        <h2>Players &amp; Seats</h2>
-        <PlayerStepper />
+        <h2>Seats</h2>
         <p className="note">Names are optional. Seating order and first player are randomized when you start.</p>
         <NameInputs />
         <Explainer id="exp-auction" summary="How this works">

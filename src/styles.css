@@ -69,22 +69,28 @@ nav button:hover { color: var(--ink); }
   nav::-webkit-scrollbar { display: none; }
   nav button { flex: 0 0 auto; scroll-snap-align: start; white-space: nowrap; }
 }
-nav button:focus-visible, .btn:focus-visible, .card:focus-visible, .stepper button:focus-visible,
+nav button:focus-visible, .btn:focus-visible, .card:focus-visible, .player-bar button:focus-visible,
 input:focus-visible {
   outline: 3px solid var(--gold); outline-offset: 2px;
 }
 
-/* ---------- player count ---------- */
-.stepper {
-  display: flex; align-items: center; justify-content: center; gap: 14px; margin: 10px 0 18px;
+/* ---------- player count (global, in header) ---------- */
+.player-bar {
+  display: inline-flex; align-items: center; gap: 10px;
+  margin: 14px 0 2px; padding: 5px 6px 5px 14px;
+  border: 1px solid var(--gold); border-radius: 999px;
+  background: var(--paper); box-shadow: inset 0 1px 2px rgba(58,46,28,.08);
 }
-.stepper button {
-  width: 40px; height: 40px; border-radius: 50%;
-  border: 2px solid var(--ink); background: var(--paper); color: var(--ink);
-  font-size: 1.4rem; font-family: var(--serif); cursor: pointer; line-height: 1;
+.player-bar-count { font-variant: small-caps; letter-spacing: .06em; font-size: .95rem; color: var(--ink-soft); }
+.player-bar-count .n { font-size: 1.3rem; font-weight: 700; color: var(--ink); font-variant: normal; margin-right: 4px; }
+.player-bar button {
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid var(--ink); background: var(--paper-deep); color: var(--ink);
+  font-size: 1.15rem; font-family: var(--serif); cursor: pointer; line-height: 1;
+  transition: background .15s ease;
 }
-.stepper button:disabled { opacity: .35; cursor: default; }
-.stepper .count { font-size: 1.7rem; font-weight: 700; min-width: 1.4em; text-align: center; }
+.player-bar button:hover:not(:disabled) { background: var(--gold); color: var(--paper); }
+.player-bar button:disabled { opacity: .35; cursor: default; }
 
 .view-toggle-row { display: flex; margin: 10px 0 18px; }
 .link-btn {

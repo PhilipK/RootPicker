@@ -246,3 +246,115 @@ Tuning / open questions:
 - Optional twist for later: each player secretly protects one faction before
   banning starts; a ban on a protected faction bounces (ban wasted). Adds
   bluffing, costs UI complexity — skip for v1.
+
+## Trading Post — IMPLEMENTED
+
+Now live as `src/modes/TradingPostMode.tsx` (`ModeId: "trade"`), algorithm in
+`src/lib/trade.ts`. Top Trading Cycles — the mechanism kidney exchanges and
+dorm-room assignment actually run on (Shapley–Scarf; extended to vacant goods
+by Abdulkadiroğlu & Sönmez).
+
+### Rules
+
+1. Shuffle seats. App deals a random legal lineup (reach ≥ target, A.8.1
+   respected, Second Vagabond excluded) — one secret faction per player. Every
+   other owned faction sits in a market stall.
+2. Device passes around once: each player sees their dealt faction and secretly
+   ranks any factions they'd rather play, best first. Ranking nothing means
+   keeping the deal.
+3. App runs Top Trading Cycles: everyone points at the current holder of their
+   top remaining want; stalls point at players by a shuffled priority order;
+   every cycle found trades and exits. A player-to-stall trade swaps your
+   faction into the market and the stall's out of it.
+4. Reveal replays the cycles ("Anna ⇄ Bob", "Carl takes the Lizard Cult from
+   the stalls; his Vagabond returns to the market"), then the usual summary.
+   Seat 0 is first player, the standing convention.
+
+### Why fair
+
+Individually rational: nobody ever ends worse than their deal, by their own
+ranking. Pure TTC is strategyproof (honest ranking is provably optimal) and
+core-stable (no clique could break off and trade better among themselves).
+The stall extension dents strategyproofness only at the margin where the
+legality gate blocks a trade — the Explainer says so honestly.
+
+### Why legal combinations
+
+The deal starts legal by construction (random choice among legal
+`playerCount`-subsets, enumerated via `combinations` — at most C(13,6)=1716).
+Player-to-player cycles permute the multiset: still legal, zero checks needed.
+Only stall cycles change the multiset (one faction in, one out), and each is
+gated: an illegal resulting multiset blocks that want and the pointer moves
+down the ranking, so the invariant "player multiset legal after every executed
+cycle" holds start to finish. Militant presence isn't enforced, matching
+Wishlist's subset legality (reach + A.8.1 only).
+
+### Implementation notes
+
+`usePersistedReducer` machine (`setup → rank → done`). Rank phase is
+Wishlist's pass-the-device ranking with an unlimited pick count and the dealt
+faction shown privately behind the `PassDeviceGate`. Randomness (seat shuffle,
+deal, stall priority) is injected at START/SUBMIT from the component, keeping
+the reducer pure; `runTrade` itself is deterministic and unit-tested in
+`src/lib/trade.test.ts`. Reveal reuses `.reveal-log`. No house-rule tag:
+nothing touches scoring.
+
+The stalls are a setup toggle (`rootpicker.tradeStallsOpen`, default on). At
+4 players 9 of 12 rankable factions sit in stalls, so ~75% of wishes point at
+one — stall trades dominate and the mode drifts toward "pick a favorite from
+the whole pool, contested by random priority". Stalls closed is pure
+Shapley–Scarf TTC on the dealt lineup: scarcer trades, the deal matters, and
+only the dealt factions are offered for ranking (the lineup — not who holds
+what — becomes open info, like any dealt draft pool).
+
+## Woodland Raffle — IMPLEMENTED
+
+Now live as `src/modes/RaffleMode.tsx` (`ModeId: "raffle"`), draw logic in
+`src/lib/raffle.ts`. Charity-raffle allocation: equal ticket budgets, influence
+proportional to declared want, lottery thrill on the draw.
+
+### Rules
+
+1. Shuffle seats. Device passes around: each player secretly spreads 10
+   tickets across any factions (Second Vagabond excluded). All-in is greed,
+   spreading is a hedge.
+2. All tickets go into one urn, shuffled. Tickets are drawn one at a time on
+   the shared screen — a big reveal button, with a fast-forward.
+3. A drawn ticket assigns its faction to its player UNLESS the faction is
+   already claimed, the player is already settled, or the assignment would
+   strand the table below reach — any of those burns the ticket. Burned
+   tickets cost exactly their own urn weight, nothing else.
+4. Urn empty (or everyone settled): unsettled players get a random legal fill.
+   The first player to be random-filled becomes first player — compensation
+   for getting the least preference expression. Everyone ticket-won: seat 0.
+
+### Why fair
+
+Equal budgets, proportional influence: 10-on-Vagabond vs 2-on-Vagabond is
+10:2 odds. Not strategyproof — concentration gambling is the point, and the
+Explainer says tickets are lottery entries, not orders. A table that
+collectively all-ins on insurgents spends the slack early and the rest
+random-fill militants; honest behavior, flagged up front.
+
+### Why legal combinations
+
+Every assignment (draw or fill) is gated by `reachBlockReason` against the
+already-claimed set, so the partial table stays completable after every event
+and the final table is legal by induction — the same guard Simple mode runs
+per pick. Vagabond/Knaves exclusion comes free from the same function.
+
+### Implementation notes
+
+`usePersistedReducer` machine (`setup → tickets → draw → done`). Ticket phase
+follows Wishlist's pass-the-device pattern with tap-to-add-a-ticket cards
+(count shown as the rank badge) and a remove-last control. Urn shuffle, fill
+faction order, and fill seat order are all pre-shuffled in the component when
+the last player submits, so the reducer stays pure and every draw is
+deterministic and unit-testable (`src/lib/raffle.test.ts`). Draw phase renders
+`.reveal-log` lines (won / burned + reason). No house-rule tag: nothing
+touches scoring.
+
+Tuning / open questions:
+- 10 tickets is a guess; fewer = coarser preference, more random fill.
+- Burned tickets are shown live as they're drawn — the drama is the point. If
+  that drags at 6 players, a "draw all" exists.

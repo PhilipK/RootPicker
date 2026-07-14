@@ -13,6 +13,8 @@ const MODE_IDS: ModeId[] = [
   "tt",
   "wish",
   "potluck",
+  "trade",
+  "raffle",
   "settings",
 ];
 

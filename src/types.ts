@@ -24,6 +24,8 @@ export type ModeId =
   | "tt"
   | "wish"
   | "potluck"
+  | "trade"
+  | "raffle"
   | "settings";
 
 export type Tier = "new" | "comfortable" | "expert";

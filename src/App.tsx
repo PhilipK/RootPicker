@@ -14,6 +14,8 @@ import { BountyDraftMode } from "./modes/BountyDraftMode";
 import { TeachingTiersMode } from "./modes/TeachingTiersMode";
 import { WishlistMode } from "./modes/WishlistMode";
 import { PotluckDraftMode } from "./modes/PotluckDraftMode";
+import { TradingPostMode } from "./modes/TradingPostMode";
+import { RaffleMode } from "./modes/RaffleMode";
 import { SettingsMode } from "./modes/SettingsMode";
 
 function AppShell() {
@@ -47,6 +49,8 @@ function AppShell() {
             {mode === "tt" && <TeachingTiersMode />}
             {mode === "wish" && <WishlistMode />}
             {mode === "potluck" && <PotluckDraftMode />}
+            {mode === "trade" && <TradingPostMode />}
+            {mode === "raffle" && <RaffleMode />}
             {mode === "settings" && <SettingsMode />}
           </>
         )}

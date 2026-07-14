@@ -143,6 +143,28 @@ function PotluckIcon() {
   );
 }
 
+function TradeIcon() {
+  // two arrows chasing each other in a circle — a trading cycle
+  return (
+    <svg {...strokeProps}>
+      <path d="M6.5 9a6.5 6.5 0 0 1 11-1.5" />
+      <path d="M17.5 4v3.5H14" />
+      <path d="M17.5 15a6.5 6.5 0 0 1-11 1.5" />
+      <path d="M6.5 20v-3.5H10" />
+    </svg>
+  );
+}
+
+function RaffleIcon() {
+  // a raffle ticket with a perforated edge
+  return (
+    <svg {...strokeProps}>
+      <path d="M3.5 8.5a2 2 0 0 0 0 7V19h17v-3.5a2 2 0 0 1 0-7V5h-17v3.5z" />
+      <path d="M14.5 6.5v1.6M14.5 10v1.6M14.5 13.4v1.6M14.5 16.8v1.6" strokeDasharray="0.1 2.6" />
+    </svg>
+  );
+}
+
 function GearIcon() {
   return (
     <svg {...strokeProps}>
@@ -239,6 +261,20 @@ export const GAME_MODES: ModeMeta[] = [
     desc: "Everyone adds one faction to a shared pool in turn, then drafts it in reverse order — just never the one they brought.",
     best: "open-information tables who like the twist of never playing their own pick",
   },
+  {
+    id: "trade",
+    label: "Trading Post",
+    icon: <TradeIcon />,
+    desc: "Everyone is dealt a secret faction, ranks what they'd rather play, and the app trades wishes around in cycles.",
+    best: "getting everyone an upgrade without anyone haggling",
+  },
+  {
+    id: "raffle",
+    label: "Woodland Raffle",
+    icon: <RaffleIcon />,
+    desc: "Spread ten secret tickets across the factions you want, then watch the urn draw winners one ticket at a time.",
+    best: "gamblers who'd rather bet on a faction than argue for it",
+  },
 ];
 
 export const SETTINGS_META: Pick<ModeMeta, "id" | "label" | "icon"> = {
@@ -257,7 +293,7 @@ export function ModeSelect({ onSelect }: { onSelect: (m: ModeId) => void }) {
   return (
     <section className="mode-select">
       <p className="mode-select-intro">
-        Ten ways to seat the Woodland. Choose how your table settles on factions.
+        Twelve ways to seat the Woodland. Choose how your table settles on factions.
       </p>
 
       <ul className="mode-grid">

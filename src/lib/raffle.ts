@@ -10,7 +10,7 @@ export interface RaffleTicket {
 }
 
 export type RaffleEvent =
-  | { type: "won"; seatIndex: number; id: string }
+  | { type: "won"; seatIndex: number; id: string; purged?: number }
   | { type: "burn"; seatIndex: number; id: string; reason: "faction-taken" | "seat-settled" | "reach" }
   | { type: "fill"; seatIndex: number; id: string };
 

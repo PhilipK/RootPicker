@@ -42,6 +42,11 @@ describe("RaffleMode happy path (default 4 players)", () => {
     expect(subs).toHaveLength(4);
     subs.forEach((el) => expect(el.textContent).toMatch(/won by ticket|random fill/));
 
+    // every win eagerly burns all now-dead tickets, so no ticket is ever
+    // drawn just to burn — the log is wins and fills only
+    const log = Array.from(document.querySelectorAll(".reveal-log li")).map((li) => li.textContent!);
+    expect(log.every((t) => /wins the|from the leftovers/.test(t))).toBe(true);
+
     const reach = Number(screen.getByText(/^Reach/).querySelector("b")!.textContent);
     expect(reach).toBeGreaterThanOrEqual(REACH_TARGET[4]);
   });

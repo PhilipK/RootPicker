@@ -120,10 +120,25 @@ function raffleReducer(state: RaffleState, action: RaffleAction): RaffleState {
       for (let k = 0; k < action.count && next.phase === "draw"; k++) {
         if (next.drawn >= next.urn.length) break;
         const ticket = next.urn[next.drawn];
-        const ev = resolveTicket(ticket, next.assign, action.available, action.target);
+        let ev = resolveTicket(ticket, next.assign, action.available, action.target);
         const assign = next.assign.slice();
-        if (ev.type === "won") assign[ev.seatIndex] = ev.id;
-        next = { ...next, drawn: next.drawn + 1, events: [...next.events, ev], assign };
+        let urn = next.urn;
+        if (ev.type === "won") {
+          assign[ev.seatIndex] = ev.id;
+          // Claims only ever tighten what the table can still hold, so a
+          // ticket dead now is dead forever — burn every one of them with the
+          // win (the winner's own leftovers, rival tickets on the claimed
+          // faction, and anything the reach math just killed) instead of
+          // drawing them out one anticlimax at a time.
+          const rest = urn.slice(next.drawn + 1);
+          const live = rest.filter((t) => resolveTicket(t, assign, action.available, action.target).type === "won");
+          const purged = rest.length - live.length;
+          if (purged) {
+            urn = [...urn.slice(0, next.drawn + 1), ...live];
+            ev = { ...ev, purged };
+          }
+        }
+        next = { ...next, urn, drawn: next.drawn + 1, events: [...next.events, ev], assign };
         next = finishIfSettled(next, action.available, action.target);
       }
       return next;
@@ -138,7 +153,14 @@ function eventLine(ev: RaffleEvent, seats: string[], firstSeat: number): { cls: 
   const faction = byId[ev.id].name;
   switch (ev.type) {
     case "won":
-      return { cls: "fav-line", text: `${name} wins the ${faction}!` };
+      return {
+        cls: "fav-line",
+        text: `${name} wins the ${faction}!${
+          ev.purged
+            ? ` ${ev.purged} ticket${ev.purged === 1 ? "" : "s"} that can no longer win burn${ev.purged === 1 ? "s" : ""} with it.`
+            : ""
+        }`,
+      };
     case "burn":
       return {
         cls: "void-line",
@@ -187,11 +209,12 @@ export function RaffleMode() {
         <Explainer id="exp-raffle" summary="How this works">
           Every player secretly spreads <b>{RAFFLE_TICKETS} raffle tickets</b> across the factions they want —
           all-in on one is greed, spreading out is a hedge. All tickets go into one urn and are drawn one at a
-          time on the shared screen. A drawn ticket wins its faction for its player, unless the faction is
-          already claimed, the player is already settled, or the pick would strand the table below the reach
-          target — then it burns. Tickets are lottery entries, not orders: bad bets cost exactly their own
-          weight. When the urn empties, anyone still empty-handed gets a random reach-safe faction from the
-          leftovers, and the first player filled that way opens the game as compensation. This structure is a
+          time on the shared screen. A drawn ticket wins its faction for its player — and every ticket that can
+          no longer win (the winner's leftovers, rival tickets on the claimed faction, anything the reach math
+          just killed) burns with the win, so what stays in the urn is always live. Tickets are lottery entries,
+          not orders: bad bets cost exactly their own weight. When the urn empties, anyone still empty-handed
+          gets a random reach-safe faction from the leftovers, and the first player filled that way opens the
+          game as compensation. This structure is a
           house rule, not from the Law, but nothing about scoring changes.
         </Explainer>
         <SetupHero />
@@ -334,7 +357,6 @@ export function RaffleMode() {
 
   // done
   const total = state.assign.reduce((s, id) => s + byId[id!].reach, 0);
-  const undrawn = state.urn.length - state.drawn;
   const summaryItems: SummaryItem[] = state.seats.map((name, i) => {
     const f = byId[state.assign[i]!];
     const via = state.events.find((e) => (e.type === "won" || e.type === "fill") && e.seatIndex === i)!;
@@ -357,11 +379,6 @@ export function RaffleMode() {
     <section>
       <h2>The Woodland is Set</h2>
       <ReachStampLine total={total} recommended={rec} />
-      {undrawn > 0 && (
-        <p className="note">
-          Everyone settled with {undrawn} ticket{undrawn === 1 ? "" : "s"} still in the urn — they stay undrawn.
-        </p>
-      )}
       <SummaryList items={summaryItems} />
       <h2>The Draw, Ticket by Ticket</h2>
       <ul className="reveal-log">{logItems}</ul>

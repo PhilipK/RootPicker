@@ -323,7 +323,11 @@ proportional to declared want, lottery thrill on the draw.
 3. A drawn ticket assigns its faction to its player UNLESS the faction is
    already claimed, the player is already settled, or the assignment would
    strand the table below reach — any of those burns the ticket. Burned
-   tickets cost exactly their own urn weight, nothing else.
+   tickets cost exactly their own urn weight, nothing else. Every win also
+   eagerly burns all tickets that can no longer win (the winner's leftovers,
+   rival tickets on the claimed faction, reach-dead tickets) — sound because
+   claims only ever tighten the reach math, so dead is dead forever. The urn
+   therefore only ever holds live tickets and every later draw is a win.
 4. Urn empty (or everyone settled): unsettled players get a random legal fill.
    The first player to be random-filled becomes first player — compensation
    for getting the least preference expression. Everyone ticket-won: seat 0.

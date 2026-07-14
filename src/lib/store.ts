@@ -1,6 +1,23 @@
 import { useCallback, useState } from "react";
 import { DEFAULT_OWNED_IDS } from "../data/factions";
-import type { Tier } from "../types";
+import type { ModeId, Tier } from "../types";
+
+const MODE_IDS: ModeId[] = [
+  "simple",
+  "draft",
+  "hand",
+  "fav",
+  "cut",
+  "auction",
+  "bounty",
+  "tt",
+  "wish",
+  "settings",
+];
+
+function isModeId(v: unknown): v is ModeId {
+  return typeof v === "string" && (MODE_IDS as string[]).includes(v);
+}
 
 function readStorage<T>(key: string, fallback: T): T {
   try {
@@ -74,4 +91,9 @@ export function useTierAssignments(): [Tier[], (v: Tier[]) => void] {
 
 export function useExplainerOpen(id: string): [boolean, (v: boolean) => void] {
   return useLocalStorage<boolean>(`rootpicker.explainerOpen.${id}`, true);
+}
+
+export function useActiveMode(): [ModeId, (v: ModeId) => void] {
+  const [v, setV] = useLocalStorage<ModeId>("rootpicker.mode", "simple");
+  return [isModeId(v) ? v : "simple", setV];
 }

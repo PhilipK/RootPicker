@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import type { ModeId } from "./types";
+import { useEffect } from "react";
 import { AppProvider, useAppContext } from "./context/AppContext";
+import { useActiveMode } from "./lib/store";
 import { Header } from "./components/Header";
 import { Nav } from "./components/Nav";
 import { SimpleMode } from "./modes/SimpleMode";
@@ -15,7 +15,7 @@ import { WishlistMode } from "./modes/WishlistMode";
 import { SettingsMode } from "./modes/SettingsMode";
 
 function AppShell() {
-  const [mode, setMode] = useState<ModeId>("simple");
+  const [mode, setMode] = useActiveMode();
   const { viewMode } = useAppContext();
 
   useEffect(() => {

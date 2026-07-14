@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAppContext } from "../context/AppContext";
 import { shuffleArr } from "../lib/shuffle";
 import { reachBlockReason } from "../lib/reach";
@@ -7,6 +8,9 @@ import { byId, REACH_TARGET } from "../data/factions";
 import { Explainer } from "../components/Explainer";
 import { NameInputs } from "../components/NameInputs";
 import { FactionCard } from "../components/FactionCard";
+import { GridLegend } from "../components/GridLegend";
+import { SetupHero } from "../components/SetupHero";
+import { DisabledReasonNote } from "../components/DisabledReasonNote";
 import { OrderList, type OrderItem } from "../components/OrderList";
 import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
@@ -96,6 +100,7 @@ export function CutChooseMode() {
     serializeCutState,
     deserializeCutState,
   );
+  const [tapReason, setTapReason] = useState<string | null>(null);
 
   useEffectSkipFirst(() => {
     if (state.phase !== "setup") dispatch({ type: "RESET" });
@@ -104,17 +109,18 @@ export function CutChooseMode() {
   if (state.phase === "setup") {
     return (
       <section>
-        <h2>Seats</h2>
-        <p className="note">
-          Names are optional. Seating order, first player, and the Warden are randomized when you start.
-        </p>
-        <NameInputs />
         <Explainer id="exp-cut" summary="How this works">
           One randomly chosen player is the <b>Warden</b>. They build a lineup of exactly as many factions as
           there are players, meeting the reach total. Then everyone else picks one from the lineup, in turn order
           — and the Warden plays whatever’s left. Classic cut-and-choose: the fairest lineup is one the Warden
           would be happy to end up with.
         </Explainer>
+        <SetupHero />
+        <h2>Seats</h2>
+        <p className="note">
+          Names are optional. Seating order, first player, and the Warden are randomized when you start.
+        </p>
+        <NameInputs />
         <label className="note" style={{ display: "block" }}>
           <input type="checkbox" checked={adventurous} onChange={(e) => setAdventurous(e.target.checked)} />{" "}
           Adventurous group — allow any mix that reaches 17+
@@ -153,6 +159,7 @@ export function CutChooseMode() {
           </span>
         </div>
 
+        <GridLegend corner />
         <div className="grid">
           {availableFactions
             .filter((f) => f.id !== "vagabond2" || state.lineup.has("vagabond"))
@@ -169,11 +176,13 @@ export function CutChooseMode() {
                   dimmed={!!reason}
                   disabled={!!reason}
                   title={reason ?? undefined}
+                  onDisabledTap={reason ? () => setTapReason(reason) : undefined}
                   onClick={() => dispatch({ type: "TOGGLE", id: f.id })}
                 />
               );
             })}
         </div>
+        <DisabledReasonNote reason={tapReason} onDismiss={() => setTapReason(null)} />
         <div className="btn-row">
           <button className="btn" disabled={!(full && total >= effTarget)} onClick={() => dispatch({ type: "CONFIRM_LINEUP" })}>
             Lock in the lineup
@@ -215,6 +224,7 @@ export function CutChooseMode() {
         <div className="picker-banner">
           <b>{state.seats[seat]}</b> picks now.
         </div>
+        <GridLegend />
         <div className="grid">
           {[...state.lineup]
             .filter((id) => !taken.has(id))

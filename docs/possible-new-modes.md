@@ -4,6 +4,86 @@ Design sketches for picker modes not yet implemented. Existing modes for referen
 Simple (free pick), Draft (Law A.8.3), Hand draft, Fav/Ban, Cut & Choose, Teaching
 Tiers, Wishlist optimizer.
 
+## Potluck Draft — IMPLEMENTED
+
+Now live as `src/modes/PotluckDraftMode.tsx` (`ModeId: "potluck"`), guard logic in
+`src/lib/potluck.ts`. Everyone brings a faction to the table; nobody plays the
+one they brought.
+
+### Rules
+
+1. Shuffle seats, as in every other mode. In seat order, each player adds ONE
+   faction to a shared pool — open information, the pool builds where
+   everyone can see it. Contributions are gated by `reachBlockReason`
+   (`src/lib/reach.ts`) exactly like Simple mode picks, so the final pool of
+   `playerCount` factions always meets the reach target (or 17+ for
+   adventurous groups). Vagabond/Knaves exclusion (A.8.1) and Second Vagabond
+   gating come free from the same function. Standard adventurous checkbox in
+   setup.
+2. Once the pool is full, picking happens in REVERSE seat order — last
+   contributor picks first. Each player takes one faction from the pool, with
+   a single rule: never the one they themselves contributed.
+3. Deadlock guard: with "not your own" as the only per-player constraint, the
+   only way to get stuck is a picker being left with only their own
+   contribution. The app blocks any pick that would leave *any* later picker
+   in that spot, not just the very last one — see "Why legal combinations."
+4. Whoever picks last goes first in the actual game, same compensation as
+   Advanced Draft and Teaching Tiers. Because pick order is the exact reverse
+   of seat order, "picks last" is always seat 0 — which is already the app's
+   standing convention for "first player," so no extra bookkeeping is needed.
+5. Two players is a forced swap: you play what they brought, they play what
+   you brought. Nothing to guard against — it's just the only arrangement two
+   people can make — so the Explainer notes it with a wink instead of
+   blocking it.
+
+### Why fair
+
+Contributing is preference expression with consequences: you'll never play
+what you bring, so the honest move is to bring something you'd enjoy
+*facing*, or something you want someone else at the table to try — not your
+comfort pick. Picking first compensates for contributing last: seat N (last
+to add to the pool, so the one reacting to the fullest picture of it) also
+picks first. The real turn-order compensation, though, is the game-order
+reversal in rule 4 — the seat that picks last (always seat 0, by
+construction) starts the actual game, offsetting whatever edge picking last
+in the draft cost them.
+
+### Why legal combinations
+
+Contribute-phase gating is identical to Simple mode: `reachBlockReason` on
+every addition, so the final pool always hits the Law 5.2 total by
+construction, with Vagabond/Knaves and Second Vagabond handled for free.
+
+Pick-phase legality is a different problem: reach is no longer at stake (the
+pool is already a fixed legal set of `playerCount` factions), the only rule
+is "not your own." The one way to break that is a bad earlier pick stranding
+a later picker with nothing but their own contribution — and this isn't only
+possible at the very last seat. `src/lib/potluck.ts` exports
+`hasCompleteMatching`, a small bipartite-matching check (Kuhn's algorithm):
+before allowing a candidate pick, simulate removing it and ask whether the
+*remaining* pickers can still be matched to the *remaining* pool with nobody
+stuck with their own faction. The pool is capped at 6 factions, so this is
+trivially cheap, and it subsumes the hard-coded "last picker" case rather
+than special-casing it — it also catches a stranding two turns out (a
+3-remaining choice that dooms the picker after next), which a check that
+only looked at the final seat would miss. `src/lib/potluck.test.ts` builds
+exactly such a 2-remaining scenario.
+
+### Implementation notes
+
+`usePersistedReducer` state machine (`setup → contribute → pick → done`).
+UI: `NameInputs` for setup, `OrderList` for both the contribute and pick
+turn orders (unified "up now" / "turn N" wording), a `FactionCard` grid for
+both phases — contribute-phase cards show `takenBy` once claimed by the
+pool, pick-phase cards are `dimmed`/`disabled` with a `title` reason from
+`pickBlockReason` when blocked — then `SummaryList` + `SetupChecklist` +
+`ReachStampLine` at the end, each summary line noting what that seat
+brought alongside what they ended up playing. No new CSS; reuses `.grid`,
+`.picker-banner`, `.order-list`, `.btn` etc. No house-rule tag: unlike
+Bounty/Auction, nothing here adjusts scoring — it only changes who ends up
+with which (already-legal) faction, the same basis Hand Draft/Fav-Ban/Cut &
+Choose/Teaching Tiers are judged on.
+
 ## Bounty Draft — IMPLEMENTED
 
 Now live as `src/modes/BountyDraftMode.tsx` (`ModeId: "bounty"`), turn logic in

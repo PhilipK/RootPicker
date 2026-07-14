@@ -8,6 +8,10 @@ import { byId, REACH_TARGET } from "../data/factions";
 import { Explainer } from "../components/Explainer";
 import { NameInputs } from "../components/NameInputs";
 import { FactionCard } from "../components/FactionCard";
+import { GridLegend } from "../components/GridLegend";
+import { SetupHero } from "../components/SetupHero";
+import { DisabledReasonNote } from "../components/DisabledReasonNote";
+import { PassDeviceGate } from "../components/PassDeviceGate";
 import { OrderList, type OrderItem } from "../components/OrderList";
 import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
@@ -103,6 +107,7 @@ export function RiverfolkAuctionMode() {
   const { playerCount, availableFactions, playerNames, adventurous, setAdventurous, effTarget } = useAppContext();
   const [state, dispatch] = usePersistedReducer("rootpicker.session.auction", auctionReducer, initialState);
   const [bidChoice, setBidChoice] = useState<number | null>(null);
+  const [tapReason, setTapReason] = useState<string | null>(null);
 
   useEffectSkipFirst(() => {
     if (state.phase !== "setup") dispatch({ type: "RESET" });
@@ -111,9 +116,6 @@ export function RiverfolkAuctionMode() {
   if (state.phase === "setup") {
     return (
       <section>
-        <h2>Seats</h2>
-        <p className="note">Names are optional. Seating order and first player are randomized when you start.</p>
-        <NameInputs />
         <Explainer id="exp-auction" summary="How this works">
           Pick order is worth something — so buy it. Each player secretly bids <b>0–{MAX_BID} VP</b>; the highest
           bidder picks their faction first (ties broken randomly). Overbids are trimmed to one above the highest
@@ -122,6 +124,10 @@ export function RiverfolkAuctionMode() {
           what’s left with a head start. The starting-VP system is a house rule, not from the Law. Picks are
           checked so the table always reaches the required total.
         </Explainer>
+        <SetupHero />
+        <h2>Seats</h2>
+        <p className="note">Names are optional. Seating order and first player are randomized when you start.</p>
+        <NameInputs />
         <label className="note" style={{ display: "block" }}>
           <input type="checkbox" checked={adventurous} onChange={(e) => setAdventurous(e.target.checked)} />{" "}
           Adventurous group — allow any mix that reaches 17+
@@ -138,24 +144,9 @@ export function RiverfolkAuctionMode() {
     );
   }
 
-  if (state.phase === "pass") {
-    return (
-      <section>
-        <div className="picker-banner">
-          Pass the device to <b>{state.seats[state.bids.length]}</b> — only they should look.
-          &nbsp;<span className="stamp neutral">{state.bids.length} / {state.seats.length} bids in</span>
-        </div>
-        <div className="btn-row">
-          <button className="btn" onClick={() => dispatch({ type: "SHOW" })}>
-            Enter my bid
-          </button>
-          <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>Start over</ConfirmResetButton>
-        </div>
-      </section>
-    );
-  }
-
-  if (state.phase === "bid") {
+  if (state.phase === "pass" || state.phase === "bid") {
+    const actorName = state.seats[state.bids.length];
+    const actorKey = `auction-bid-${state.bids.length}`;
     const lockBid = () => {
       if (bidChoice === null) return;
       const last = state.bids.length + 1 === state.seats.length;
@@ -164,32 +155,48 @@ export function RiverfolkAuctionMode() {
       setBidChoice(null);
     };
     return (
-      <section>
-        <div className="picker-banner">
-          <b>{state.seats[state.bids.length]}</b> — how many VP is picking early worth to you?
-        </div>
-        <div className="btn-row">
-          {Array.from({ length: MAX_BID + 1 }, (_, v) => (
-            <button
-              key={v}
-              className={`btn ${bidChoice === v ? "" : "secondary"}`}
-              aria-pressed={bidChoice === v}
-              onClick={() => setBidChoice(v)}
-            >
-              {v} VP
+      <PassDeviceGate
+        actorName={actorName}
+        actorKey={actorKey}
+        onAcknowledge={() => {
+          if (state.phase === "pass") dispatch({ type: "SHOW" });
+        }}
+        detail={
+          <p className="note">
+            <span className="stamp neutral">
+              {state.bids.length} / {state.seats.length} bids in
+            </span>
+          </p>
+        }
+        footer={<ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>Start over</ConfirmResetButton>}
+      >
+        <section>
+          <div className="picker-banner">
+            <b>{actorName}</b> — how many VP is picking early worth to you?
+          </div>
+          <div className="btn-row">
+            {Array.from({ length: MAX_BID + 1 }, (_, v) => (
+              <button
+                key={v}
+                className={`btn ${bidChoice === v ? "" : "secondary"}`}
+                aria-pressed={bidChoice === v}
+                onClick={() => setBidChoice(v)}
+              >
+                {v} VP
+              </button>
+            ))}
+          </div>
+          <p className="note">
+            You never pay more than one above the highest bid below yours, and once all bids are in, scores are
+            shifted so the biggest spender starts at 0 — everyone else starts with bonus VP.
+          </p>
+          <div className="btn-row">
+            <button className="btn" disabled={bidChoice === null} onClick={lockBid}>
+              Lock in my bid
             </button>
-          ))}
-        </div>
-        <p className="note">
-          You never pay more than one above the highest bid below yours, and once all bids are in, scores are
-          shifted so the biggest spender starts at 0 — everyone else starts with bonus VP.
-        </p>
-        <div className="btn-row">
-          <button className="btn" disabled={bidChoice === null} onClick={lockBid}>
-            Lock in my bid
-          </button>
-        </div>
-      </section>
+          </div>
+        </section>
+      </PassDeviceGate>
     );
   }
 
@@ -243,6 +250,7 @@ export function RiverfolkAuctionMode() {
         <div className="picker-banner">
           <b>{state.seats[seat]}</b> picks now{startsAt(bonuses[seat])}.
         </div>
+        <GridLegend corner />
         <div className="grid">
           {availableFactions.map((f) => {
             if (selected.has(f.id)) {
@@ -259,11 +267,13 @@ export function RiverfolkAuctionMode() {
                 dimmed={!!reason}
                 disabled={!!reason}
                 title={reason ?? undefined}
+                onDisabledTap={reason ? () => setTapReason(reason) : undefined}
                 onClick={() => dispatch({ type: "PICK", id: f.id })}
               />
             );
           })}
         </div>
+        <DisabledReasonNote reason={tapReason} onDismiss={() => setTapReason(null)} />
         <div className="btn-row">
           <button className="btn secondary" disabled={!state.picks.length} onClick={() => dispatch({ type: "UNDO" })}>
             Undo last pick

@@ -131,6 +131,18 @@ function WishIcon() {
   );
 }
 
+function PotluckIcon() {
+  // a shared cooking pot with steam — everyone contributes, no one eats what they made
+  return (
+    <svg {...strokeProps}>
+      <path d="M5 11h14l-1.3 7.3a2 2 0 0 1-2 1.7H8.3a2 2 0 0 1-2-1.7L5 11z" />
+      <path d="M3.5 11h17" />
+      <path d="M9 8.6c.9-1.5 2.4-1.5 3.2 0" />
+      <path d="M14.2 8.6c.9-1.5 2.4-1.5 3.2 0" />
+    </svg>
+  );
+}
+
 function GearIcon() {
   return (
     <svg {...strokeProps}>
@@ -220,6 +232,13 @@ export const GAME_MODES: ModeMeta[] = [
     desc: "Everyone secretly ranks their favorites; the app searches for the assignment that makes the whole table happiest.",
     best: "when everyone has opinions but no one wants to haggle",
   },
+  {
+    id: "potluck",
+    label: "Potluck Draft",
+    icon: <PotluckIcon />,
+    desc: "Everyone adds one faction to a shared pool in turn, then drafts it in reverse order — just never the one they brought.",
+    best: "open-information tables who like the twist of never playing their own pick",
+  },
 ];
 
 export const SETTINGS_META: Pick<ModeMeta, "id" | "label" | "icon"> = {
@@ -238,7 +257,7 @@ export function ModeSelect({ onSelect }: { onSelect: (m: ModeId) => void }) {
   return (
     <section className="mode-select">
       <p className="mode-select-intro">
-        Nine ways to seat the Woodland. Choose how your table settles on factions.
+        Ten ways to seat the Woodland. Choose how your table settles on factions.
       </p>
 
       <ul className="mode-grid">

@@ -23,6 +23,7 @@ export type ModeId =
   | "bounty"
   | "tt"
   | "wish"
+  | "potluck"
   | "settings";
 
 export type Tier = "new" | "comfortable" | "expert";

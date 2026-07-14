@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { DEFAULT_OWNED_IDS } from "../data/factions";
 import type { ModeId, Tier } from "../types";
 
@@ -12,6 +12,7 @@ const MODE_IDS: ModeId[] = [
   "bounty",
   "tt",
   "wish",
+  "potluck",
   "settings",
 ];
 
@@ -100,11 +101,109 @@ export function useExplainerOpen(id: string): [boolean, (v: boolean) => void] {
   return useLocalStorage<boolean>(`rootpicker.explainerOpen.${id}`, true);
 }
 
+/**
+ * URL hash convention: "home" is the empty hash (no fragment at all), every
+ * other mode is `#<modeId>` (e.g. `#draft`). An empty hash is preferred over
+ * `#home` so a fresh visit / the settled-at-home state doesn't leave a
+ * fragment in the address bar; `#home` is still accepted when read, in case
+ * someone bookmarks or shares it, so it round-trips through isActiveMode.
+ */
+function hashToMode(): ActiveMode | null {
+  const raw = window.location.hash.replace(/^#/, "");
+  if (raw === "") return null; // no hash present — caller falls back to storage/home
+  return isActiveMode(raw) ? raw : null;
+}
+
+function modeToHash(mode: ActiveMode): string {
+  return mode === "home" ? "" : `#${mode}`;
+}
+
+/** history.state tag written on every entry this hook pushes, so we can later
+ *  tell whether the CURRENT entry is one of ours (see `set` below). */
+interface NavState {
+  rootpicker: true;
+}
+
+function hasAppNavState(): boolean {
+  const s = window.history.state as NavState | null;
+  return !!s && s.rootpicker === true;
+}
+
 export function useActiveMode(): [ActiveMode, (v: ActiveMode) => void] {
   // First-time visitors (no stored value) land on "home". Legacy stored values
   // like "simple" are still honored, so a reload mid-mode returns to that mode.
-  const [v, setV] = useLocalStorage<ActiveMode>("rootpicker.mode", "home");
-  return [isActiveMode(v) ? v : "home", setV];
+  const [stored, setStored] = useLocalStorage<ActiveMode>("rootpicker.mode", "home");
+
+  // A hash present on load wins (deep link); otherwise fall back to whatever
+  // was persisted from the last session.
+  const [mode, setModeState] = useState<ActiveMode>(() => hashToMode() ?? (isActiveMode(stored) ? stored : "home"));
+
+  // Keep the rendered mode (and its own localStorage mirror) in sync with the
+  // physical back/forward buttons and any other same-document hash change
+  // (including the ones `set` itself triggers below — updating from the hash
+  // is idempotent, so there's no harm reacting to our own writes too).
+  useEffect(() => {
+    function onHashChange() {
+      const next = hashToMode() ?? "home";
+      setModeState(next);
+      setStored(next);
+    }
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // A session resumed from localStorage (no hash, or a stale one) should
+  // still get a URL that matches where it landed — but this is a page load,
+  // not a navigation, so use replaceState rather than pushing a new entry.
+  useEffect(() => {
+    const targetHash = modeToHash(mode);
+    if (window.location.hash !== targetHash) {
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${window.location.pathname}${window.location.search}${targetHash}`,
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const set = useCallback(
+    (next: ActiveMode) => {
+      const targetHash = modeToHash(next);
+      if (window.location.hash === targetHash) return; // already there
+
+      if (next === "home" && hasAppNavState()) {
+        // The entry we're leaving was itself pushed by this hook (i.e. we
+        // got here via an in-app navigation, not a fresh deep link), so a
+        // real "back" is guaranteed to stay inside the app — and, because
+        // this hook only ever pushes mode entries on top of a home entry,
+        // it's guaranteed to land back on "home". Preferring it over a
+        // fresh push means the resulting history no longer has this mode
+        // sitting directly below "home", so a later physical back press
+        // won't immediately re-enter the mode the user just left.
+        //
+        // `history.back()` itself resolves asynchronously (its popstate/
+        // hashchange fire on a later task), so update state here rather
+        // than waiting on the hashchange listener above — otherwise the
+        // UI would lag a tick behind the button press.
+        setModeState("home");
+        setStored("home");
+        window.history.back();
+        return;
+      }
+
+      setModeState(next);
+      setStored(next);
+      window.location.hash = targetHash; // pushes a new, navigable history entry
+      // Tag the entry we just pushed so a future "back to home" from here
+      // (or from a mode reached beyond it) knows it can safely unwind.
+      window.history.replaceState({ rootpicker: true } satisfies NavState, "", window.location.href);
+    },
+    [setStored],
+  );
+
+  return [mode, set];
 }
 
 /**

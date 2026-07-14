@@ -8,6 +8,8 @@ import { byId, REACH_TARGET } from "../data/factions";
 import type { Tier, TieredPlayer } from "../types";
 import { Explainer } from "../components/Explainer";
 import { FactionCard } from "../components/FactionCard";
+import { GridLegend } from "../components/GridLegend";
+import { SetupHero } from "../components/SetupHero";
 import { OrderList, type OrderItem } from "../components/OrderList";
 import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
@@ -110,6 +112,12 @@ export function TeachingTiersMode() {
   if (state.phase === "setup") {
     return (
       <section>
+        <Explainer id="exp-tt" summary="How this works">
+          New players choose first, only from beginner-friendly factions; then Comfortable, then Expert picks
+          last from whatever’s left. To offset the draft advantage, turn order in the game is reversed — whoever
+          picked last goes first.
+        </Explainer>
+        <SetupHero />
         <h2>Players &amp; Experience</h2>
         <p className="note">
           Names are optional. Tag each player <b>New</b>, <b>Comfortable</b>, or <b>Expert</b>. Seating order is
@@ -144,11 +152,6 @@ export function TeachingTiersMode() {
             </div>
           ))}
         </div>
-        <Explainer id="exp-tt" summary="How this works">
-          New players choose first, only from beginner-friendly factions; then Comfortable, then Expert picks
-          last from whatever’s left. To offset the draft advantage, turn order in the game is reversed — whoever
-          picked last goes first.
-        </Explainer>
         <label className="note" style={{ display: "block" }}>
           <input type="checkbox" checked={adventurous} onChange={(e) => setAdventurous(e.target.checked)} />{" "}
           Adventurous group — allow any mix that reaches 17+
@@ -210,6 +213,7 @@ export function TeachingTiersMode() {
           <b>{player.name}</b> <span className={`tier-tag ${player.tier}`}>{TIER_LABEL[player.tier]}</span> picks
           now.
         </div>
+        <GridLegend />
         <div className="grid">
           {candidates.map((id) => (
             <FactionCard key={id} faction={byId[id]} reachBadge onClick={() => dispatch({ type: "PICK", id })} />

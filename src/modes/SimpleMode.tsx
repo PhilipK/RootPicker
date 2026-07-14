@@ -1,14 +1,17 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAppContext } from "../context/AppContext";
 import { reachBlockReason } from "../lib/reach";
 import { usePersistedSet } from "../lib/store";
 import { Explainer } from "../components/Explainer";
 import { FactionCard } from "../components/FactionCard";
+import { GridLegend } from "../components/GridLegend";
+import { DisabledReasonNote } from "../components/DisabledReasonNote";
 import { ReachTracker } from "../components/ReachTracker";
 
 export function SimpleMode() {
   const { playerCount, availableFactions, adventurous, setAdventurous, effTarget } = useAppContext();
   const [selected, setSelected] = usePersistedSet("rootpicker.session.simple");
+  const [tapReason, setTapReason] = useState<string | null>(null);
 
   useEffect(() => {
     const availIds = new Set(availableFactions.map((f) => f.id));
@@ -43,6 +46,7 @@ export function SimpleMode() {
         <input type="checkbox" checked={adventurous} onChange={(e) => setAdventurous(e.target.checked)} /> Adventurous
         group — allow any mix that reaches 17+
       </label>
+      <GridLegend corner />
       <div className="grid">
         {availableFactions.map((f) => {
           const isSel = selected.has(f.id);
@@ -59,10 +63,12 @@ export function SimpleMode() {
               disabled={!!reason}
               title={reason ?? undefined}
               onClick={() => toggleFaction(f.id)}
+              onDisabledTap={reason ? () => setTapReason(reason) : undefined}
             />
           );
         })}
       </div>
+      <DisabledReasonNote reason={tapReason} onDismiss={() => setTapReason(null)} />
       <ReachTracker selectedIds={selected} />
     </section>
   );

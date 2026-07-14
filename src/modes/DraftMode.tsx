@@ -7,6 +7,8 @@ import type { Faction } from "../types";
 import { Explainer } from "../components/Explainer";
 import { NameInputs } from "../components/NameInputs";
 import { FactionCard } from "../components/FactionCard";
+import { GridLegend } from "../components/GridLegend";
+import { SetupHero } from "../components/SetupHero";
 import { OrderList, type OrderItem } from "../components/OrderList";
 import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
@@ -112,6 +114,7 @@ export function DraftMode() {
   if (state.phase === "setup") {
     return (
       <section>
+        <SetupHero />
         <h2>Seats <span className="law-ref">(A.4)</span></h2>
         <p className="note">Names are optional. Seating order and first player are randomized when you deal.</p>
         <NameInputs />
@@ -155,17 +158,18 @@ export function DraftMode() {
 
     return (
       <section>
-        <h2>Turn Order</h2>
-        <OrderList items={orderItems} />
-
-        <h2>Draft Pool <span className="law-ref">(A.8.2)</span></h2>
         <Explainer id="exp-draft-board" summary="How this works">
           One militant was dealt first, then one card per player. Picks go from the last player in turn order,
           backwards. Set up your faction immediately when you pick (A.8.3).
         </Explainer>
+        <h2>Turn Order</h2>
+        <OrderList items={orderItems} />
+
+        <h2>Draft Pool <span className="law-ref">(A.8.2)</span></h2>
         <div className="picker-banner">
           <b>{state.seats[currentPicker]}</b> picks now — tap a faction, then set it up before the next pick.
         </div>
+        <GridLegend />
         <div className="grid">
           {state.pool.map((slot, idx) => {
             const locked = slot.lockedInsurgent && !militantChosen && !slot.takenBy;

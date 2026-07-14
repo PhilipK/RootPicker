@@ -19,6 +19,9 @@ import { byId, REACH_TARGET } from "../data/factions";
 import { Explainer } from "../components/Explainer";
 import { NameInputs } from "../components/NameInputs";
 import { FactionCard } from "../components/FactionCard";
+import { GridLegend } from "../components/GridLegend";
+import { SetupHero } from "../components/SetupHero";
+import { PassDeviceGate } from "../components/PassDeviceGate";
 import { OrderList, type OrderItem } from "../components/OrderList";
 import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
@@ -223,11 +226,7 @@ export function FavBanMode() {
   if (state.phase === "setup") {
     return (
       <section>
-        <h2>Seats</h2>
-        <p className="note">Names are optional. Seating order and first player are randomized when you start.</p>
-        <NameInputs />
-
-        <Explainer id="exp-fav" summary="How It Works">
+        <Explainer id="exp-fav" summary="How this works">
           In secret, each player either <b>♥ favorites</b> one faction (it’s locked to them) or <b>✖ bans</b> one
           (nobody can play it). Then everything is revealed: bans trump favorites, and if two players favorited the
           same faction it stays in the pool and both choose again — new bans allowed. Repeat until settled. Then
@@ -236,6 +235,11 @@ export function FavBanMode() {
           at least one militant. The Second Vagabond sits out, and the Vagabond and Knaves can never both end up in
           play (A.8.1).
         </Explainer>
+        <SetupHero />
+        <h2>Seats</h2>
+        <p className="note">Names are optional. Seating order and first player are randomized when you start.</p>
+        <NameInputs />
+
         <label className="note" style={{ display: "block" }}>
           <input type="checkbox" checked={adventurous} onChange={(e) => setAdventurous(e.target.checked)} />{" "}
           Adventurous group — allow any mix that reaches 17+
@@ -282,75 +286,76 @@ export function FavBanMode() {
     };
   });
 
-  if (state.phase === "pass") {
+  if (state.phase === "pass" || state.phase === "choose") {
+    const seatIdx = state.pending[state.choiceIdx];
+    const actorName = state.seats[seatIdx];
+    const actorKey = `fav-choose-${state.round}-${state.choiceIdx}`;
     const bannedNames = state.banned.map((b) => byId[b.id].name);
-    return (
-      <section>
-        <h2>Turn Order</h2>
-        <OrderList items={orderItems} />
-        {bannedNames.length > 0 && <p className="note">Banned so far: {bannedNames.join(", ")}.</p>}
-        <div className="picker-banner">
-          Pass the device to <b>{state.seats[state.pending[state.choiceIdx]]}</b> — only they should look.
-        </div>
-        <div className="btn-row">
-          <button className="btn" onClick={() => dispatch({ type: "SHOW" })}>
-            Make my choice
-          </button>
-          <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>Start over</ConfirmResetButton>
-        </div>
-      </section>
-    );
-  }
-
-  if (state.phase === "choose") {
     const { lockedSum, lockedMilitant, slots } = favStateFrom(state.locked, playerCount);
+
     return (
-      <section>
-        <div className="picker-banner">
-          <b>{state.seats[state.pending[state.choiceIdx]]}</b> — favorite one faction or ban one, in secret.
-        </div>
-        <div className="kind-toggle">
-          <button className="fav" aria-pressed={state.pickKind === "fav"} onClick={() => dispatch({ type: "SET_KIND", kind: "fav" })}>
-            ♥ Favorite — I want to play this
-          </button>
-          <button className="ban" aria-pressed={state.pickKind === "ban"} onClick={() => dispatch({ type: "SET_KIND", kind: "ban" })}>
-            ✖ Ban — nobody plays this
-          </button>
-        </div>
-        <div className="grid">
-          {state.pool.map((id) => {
-            const f = byId[id];
-            const reason = favBlockReason(state.pickKind, id, { pool: state.pool, lockedSum, lockedMilitant, slots, target: effTarget });
-            return (
-              <div key={id}>
-                <FactionCard
-                  faction={f}
-                  reachBadge
-                  selected={state.pickId === id && state.pickKind === "fav"}
-                  selectedBan={state.pickId === id && state.pickKind === "ban"}
-                  dimmed={!!reason}
-                  disabled={!!reason}
-                  onClick={() => dispatch({ type: "SET_PICK_ID", id })}
-                />
-                {reason && <p className="pool-note">{reason}</p>}
-              </div>
-            );
-          })}
-        </div>
-        <div className="btn-row">
-          <button
-            className="btn"
-            disabled={!state.pickId}
-            onClick={() => dispatch({ type: "CONFIRM", playerCount, target: effTarget })}
-          >
-            {state.pickId
-              ? state.pickKind === "fav"
-                ? `Lock in ♥ ${byId[state.pickId].name}`
-                : `Lock in ✖ ban ${byId[state.pickId].name}`
-              : "Lock in"}
-          </button>
-        </div>
-      </section>
+      <PassDeviceGate
+        actorName={actorName}
+        actorKey={actorKey}
+        onAcknowledge={() => {
+          if (state.phase === "pass") dispatch({ type: "SHOW" });
+        }}
+        detail={
+          <>
+            <OrderList items={orderItems} />
+            {bannedNames.length > 0 && <p className="note">Banned so far: {bannedNames.join(", ")}.</p>}
+          </>
+        }
+        footer={<ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>Start over</ConfirmResetButton>}
+      >
+        <section>
+          <div className="picker-banner">
+            <b>{actorName}</b> — favorite one faction or ban one, in secret.
+          </div>
+          <div className="kind-toggle">
+            <button className="fav" aria-pressed={state.pickKind === "fav"} onClick={() => dispatch({ type: "SET_KIND", kind: "fav" })}>
+              ♥ Favorite — I want to play this
+            </button>
+            <button className="ban" aria-pressed={state.pickKind === "ban"} onClick={() => dispatch({ type: "SET_KIND", kind: "ban" })}>
+              ✖ Ban — nobody plays this
+            </button>
+          </div>
+          <GridLegend />
+          <div className="grid">
+            {state.pool.map((id) => {
+              const f = byId[id];
+              const reason = favBlockReason(state.pickKind, id, { pool: state.pool, lockedSum, lockedMilitant, slots, target: effTarget });
+              return (
+                <div key={id}>
+                  <FactionCard
+                    faction={f}
+                    reachBadge
+                    selected={state.pickId === id && state.pickKind === "fav"}
+                    selectedBan={state.pickId === id && state.pickKind === "ban"}
+                    dimmed={!!reason}
+                    disabled={!!reason}
+                    onClick={() => dispatch({ type: "SET_PICK_ID", id })}
+                  />
+                  {reason && <p className="pool-note">{reason}</p>}
+                </div>
+              );
+            })}
+          </div>
+          <div className="btn-row">
+            <button
+              className="btn"
+              disabled={!state.pickId}
+              onClick={() => dispatch({ type: "CONFIRM", playerCount, target: effTarget })}
+            >
+              {state.pickId
+                ? state.pickKind === "fav"
+                  ? `Lock in ♥ ${byId[state.pickId].name}`
+                  : `Lock in ✖ ban ${byId[state.pickId].name}`
+                : "Lock in"}
+            </button>
+          </div>
+        </section>
+      </PassDeviceGate>
     );
   }
 
@@ -375,59 +380,57 @@ export function FavBanMode() {
     );
   }
 
-  if (state.phase === "assign-pass") {
-    return (
-      <section>
-        <h2>Picking Order</h2>
-        <p className="note">
-          Banners pick from what's left, first-to-ban going last:{" "}
-          {state.assignOrder.map((si) => state.seats[si]).join(", ")}.
-        </p>
-        <div className="picker-banner">
-          Pass the device to <b>{state.seats[state.assignOrder[state.assignIdx]]}</b> — only they should look.
-        </div>
-        <div className="btn-row">
-          <button className="btn" onClick={() => dispatch({ type: "ASSIGN_SHOW" })}>
-            Make my pick
-          </button>
-          <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>Start over</ConfirmResetButton>
-        </div>
-      </section>
-    );
-  }
-
-  if (state.phase === "assign-choose") {
+  if (state.phase === "assign-pass" || state.phase === "assign-choose") {
+    const actorName = state.seats[state.assignOrder[state.assignIdx]];
+    const actorKey = `fav-assign-${state.assignIdx}`;
     const { lockedSum, lockedMilitant, slots } = favStateFrom(state.locked, playerCount);
+
     return (
-      <section>
-        <div className="picker-banner">
-          <b>{state.seats[state.assignOrder[state.assignIdx]]}</b> — pick a faction from what survives.
-        </div>
-        <div className="grid">
-          {state.pool.map((id) => {
-            const f = byId[id];
-            const reason = favBlockReason("fav", id, { pool: state.pool, lockedSum, lockedMilitant, slots, target: effTarget });
-            return (
-              <div key={id}>
-                <FactionCard
-                  faction={f}
-                  reachBadge
-                  selected={state.assignPickId === id}
-                  dimmed={!!reason}
-                  disabled={!!reason}
-                  onClick={() => dispatch({ type: "ASSIGN_SET_PICK", id })}
-                />
-                {reason && <p className="pool-note">{reason}</p>}
-              </div>
-            );
-          })}
-        </div>
-        <div className="btn-row">
-          <button className="btn" disabled={!state.assignPickId} onClick={() => dispatch({ type: "ASSIGN_CONFIRM" })}>
-            {state.assignPickId ? `Pick ${byId[state.assignPickId].name}` : "Pick"}
-          </button>
-        </div>
-      </section>
+      <PassDeviceGate
+        actorName={actorName}
+        actorKey={actorKey}
+        onAcknowledge={() => {
+          if (state.phase === "assign-pass") dispatch({ type: "ASSIGN_SHOW" });
+        }}
+        detail={
+          <p className="note">
+            Banners pick from what's left, first-to-ban going last:{" "}
+            {state.assignOrder.map((si) => state.seats[si]).join(", ")}.
+          </p>
+        }
+        footer={<ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>Start over</ConfirmResetButton>}
+      >
+        <section>
+          <div className="picker-banner">
+            <b>{actorName}</b> — pick a faction from what survives.
+          </div>
+          <GridLegend />
+          <div className="grid">
+            {state.pool.map((id) => {
+              const f = byId[id];
+              const reason = favBlockReason("fav", id, { pool: state.pool, lockedSum, lockedMilitant, slots, target: effTarget });
+              return (
+                <div key={id}>
+                  <FactionCard
+                    faction={f}
+                    reachBadge
+                    selected={state.assignPickId === id}
+                    dimmed={!!reason}
+                    disabled={!!reason}
+                    onClick={() => dispatch({ type: "ASSIGN_SET_PICK", id })}
+                  />
+                  {reason && <p className="pool-note">{reason}</p>}
+                </div>
+              );
+            })}
+          </div>
+          <div className="btn-row">
+            <button className="btn" disabled={!state.assignPickId} onClick={() => dispatch({ type: "ASSIGN_CONFIRM" })}>
+              {state.assignPickId ? `Pick ${byId[state.assignPickId].name}` : "Pick"}
+            </button>
+          </div>
+        </section>
+      </PassDeviceGate>
     );
   }
 

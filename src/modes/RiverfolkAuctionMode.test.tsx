@@ -13,7 +13,7 @@ function renderAuction() {
 }
 
 function lockBid(vp: number) {
-  fireEvent.click(screen.getByRole("button", { name: "Enter my bid" }));
+  fireEvent.click(screen.getByRole("button", { name: /show me/i }));
   fireEvent.click(screen.getByRole("button", { name: `${vp} VP` }));
   fireEvent.click(screen.getByRole("button", { name: "Lock in my bid" }));
 }
@@ -95,7 +95,7 @@ describe("RiverfolkAuctionMode full flow (default 4 players)", () => {
   it("keeps the lock button disabled until a bid amount is chosen", () => {
     renderAuction();
     fireEvent.click(screen.getByRole("button", { name: /shuffle seats & start bidding/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Enter my bid" }));
+    fireEvent.click(screen.getByRole("button", { name: /show me/i }));
     expect(screen.getByRole("button", { name: "Lock in my bid" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "2 VP" }));
     expect(screen.getByRole("button", { name: "Lock in my bid" })).toBeEnabled();

@@ -7,6 +7,9 @@ import { byId, REACH_TARGET } from "../data/factions";
 import { Explainer } from "../components/Explainer";
 import { NameInputs } from "../components/NameInputs";
 import { FactionCard } from "../components/FactionCard";
+import { GridLegend } from "../components/GridLegend";
+import { SetupHero } from "../components/SetupHero";
+import { PassDeviceGate } from "../components/PassDeviceGate";
 import { OrderList, type OrderItem } from "../components/OrderList";
 import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
@@ -90,9 +93,6 @@ export function WishlistMode() {
     const pointsNote = Array.from({ length: wishCount }, (_, i) => wishPoints(i, wishCount)).join(" / ");
     return (
       <section>
-        <h2>Seats</h2>
-        <p className="note">Names are optional. Seating order and first player are randomized when you start.</p>
-        <NameInputs />
         <Explainer id="exp-wish" summary="How this works">
           Everyone secretly ranks their top <b>{wishCount}</b> factions, best to worst. The app then checks every
           reach-safe combination of factions and picks whichever assignment makes the table happiest overall
@@ -101,6 +101,10 @@ export function WishlistMode() {
           giving them a +1 VP head start — a house rule, not from the Law, so use it or skip it as you like.
           Adjust how many picks each player gets in Settings.
         </Explainer>
+        <SetupHero />
+        <h2>Seats</h2>
+        <p className="note">Names are optional. Seating order and first player are randomized when you start.</p>
+        <NameInputs />
         <label className="note" style={{ display: "block" }}>
           <input type="checkbox" checked={adventurous} onChange={(e) => setAdventurous(e.target.checked)} />{" "}
           Adventurous group — allow any mix that reaches 17+
@@ -131,56 +135,51 @@ export function WishlistMode() {
     };
   });
 
-  if (state.phase === "pass") {
-    return (
-      <section>
-        <h2>Turn Order</h2>
-        <OrderList items={orderItems} />
-        <div className="picker-banner">
-          Pass the device to <b>{state.seats[state.turn].name}</b> — only they should look.
-        </div>
-        <div className="btn-row">
-          <button className="btn" onClick={() => dispatch({ type: "SHOW" })}>
-            Make my picks
-          </button>
-        </div>
-      </section>
-    );
-  }
-
-  if (state.phase === "rank") {
+  if (state.phase === "pass" || state.phase === "rank") {
     const player = state.seats[state.turn];
+    const actorKey = `wish-${state.turn}`;
+
     return (
-      <section>
-        <div className="picker-banner">
-          <b>{player.name}</b> — tap {wishCount} factions in the order you want them, best to worst.
-        </div>
-        <div className="grid">
-          {availableFactions
-            .filter((f) => f.id !== "vagabond2")
-            .map((f) => {
-              const rank = player.picks.indexOf(f.id);
-              return (
-                <FactionCard
-                  key={f.id}
-                  faction={f}
-                  reachBadge
-                  selected={rank >= 0}
-                  rankBadge={rank >= 0 ? rank + 1 : undefined}
-                  onClick={() => dispatch({ type: "TOGGLE_PICK", id: f.id, wishCount })}
-                />
-              );
-            })}
-        </div>
-        <div className="btn-row">
-          <button className="btn" disabled={player.picks.length !== wishCount} onClick={handleConfirm}>
-            {player.picks.length === wishCount ? `Lock in my top ${wishCount}` : `Pick ${wishCount - player.picks.length} more`}
-          </button>
-        </div>
-        <p className="note" style={{ color: "var(--danger)" }}>
-          {state.error}
-        </p>
-      </section>
+      <PassDeviceGate
+        actorName={player.name}
+        actorKey={actorKey}
+        onAcknowledge={() => {
+          if (state.phase === "pass") dispatch({ type: "SHOW" });
+        }}
+        detail={<OrderList items={orderItems} />}
+      >
+        <section>
+          <div className="picker-banner">
+            <b>{player.name}</b> — tap {wishCount} factions in the order you want them, best to worst.
+          </div>
+          <GridLegend />
+          <div className="grid">
+            {availableFactions
+              .filter((f) => f.id !== "vagabond2")
+              .map((f) => {
+                const rank = player.picks.indexOf(f.id);
+                return (
+                  <FactionCard
+                    key={f.id}
+                    faction={f}
+                    reachBadge
+                    selected={rank >= 0}
+                    rankBadge={rank >= 0 ? rank + 1 : undefined}
+                    onClick={() => dispatch({ type: "TOGGLE_PICK", id: f.id, wishCount })}
+                  />
+                );
+              })}
+          </div>
+          <div className="btn-row">
+            <button className="btn" disabled={player.picks.length !== wishCount} onClick={handleConfirm}>
+              {player.picks.length === wishCount ? `Lock in my top ${wishCount}` : `Pick ${wishCount - player.picks.length} more`}
+            </button>
+          </div>
+          <p className="note" style={{ color: "var(--danger)" }}>
+            {state.error}
+          </p>
+        </section>
+      </PassDeviceGate>
     );
   }
 

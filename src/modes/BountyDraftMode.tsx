@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAppContext } from "../context/AppContext";
 import { shuffleArr } from "../lib/shuffle";
 import { reachBlockReason } from "../lib/reach";
@@ -19,6 +20,9 @@ import type { Faction } from "../types";
 import { Explainer } from "../components/Explainer";
 import { NameInputs } from "../components/NameInputs";
 import { FactionCard } from "../components/FactionCard";
+import { GridLegend } from "../components/GridLegend";
+import { SetupHero } from "../components/SetupHero";
+import { DisabledReasonNote } from "../components/DisabledReasonNote";
 import { OrderList, type OrderItem } from "../components/OrderList";
 import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
@@ -166,6 +170,7 @@ function bountyReducer(state: BountyState, action: BountyAction): BountyState {
 export function BountyDraftMode() {
   const { playerCount, availableFactions, playerNames, adventurous, setAdventurous, effTarget } = useAppContext();
   const [state, dispatch] = usePersistedReducer("rootpicker.session.bounty", bountyReducer, initialState);
+  const [tapReason, setTapReason] = useState<string | null>(null);
 
   useEffectSkipFirst(() => {
     if (state.phase !== "setup") dispatch({ type: "RESET" });
@@ -174,9 +179,6 @@ export function BountyDraftMode() {
   if (state.phase === "setup") {
     return (
       <section>
-        <h2>Seats</h2>
-        <p className="note">Names are optional. Seating order and first player are randomized when you start.</p>
-        <NameInputs />
         <Explainer id="exp-bounty" summary="How this works">
           A “No Thanks!”-style auction. The app reveals factions one at a time, no shuffling by hand. On your turn
           you either <b>claim</b> the faction — you start the game with the VP bounty sitting on it, plus any of
@@ -190,6 +192,10 @@ export function BountyDraftMode() {
           Reach target and the Vagabond/Knaves exclusion (A.8.1) are enforced on every reveal, same as Simple mode.
           Starting VP is a house rule, not from the Law.
         </Explainer>
+        <SetupHero />
+        <h2>Seats</h2>
+        <p className="note">Names are optional. Seating order and first player are randomized when you start.</p>
+        <NameInputs />
         <label className="note" style={{ display: "block" }}>
           <input type="checkbox" checked={adventurous} onChange={(e) => setAdventurous(e.target.checked)} />{" "}
           Adventurous group — allow any mix that reaches 17+
@@ -239,6 +245,7 @@ export function BountyDraftMode() {
               any faction that still fits, bounty and all. Unclaimed ones sit at 0 bounty; you'll still bank your{" "}
               {tokensLeft} unspent token{tokensLeft === 1 ? "" : "s"} as VP either way.
             </div>
+            <GridLegend corner />
             <div className="grid">
               {availableFactions
                 .filter((f) => !claimedIds.has(f.id))
@@ -254,6 +261,7 @@ export function BountyDraftMode() {
                         dimmed={!!reason}
                         disabled={!!reason}
                         title={reason ?? undefined}
+                        onDisabledTap={reason ? () => setTapReason(reason) : undefined}
                         onClick={() => dispatch({ type: "CLAIM_FROM_POOL", id: f.id })}
                       />
                       <p className="pool-note">{bounty > 0 ? `${bounty} bounty VP` : "no bounty yet"}</p>
@@ -261,6 +269,7 @@ export function BountyDraftMode() {
                   );
                 })}
             </div>
+            <DisabledReasonNote reason={tapReason} onDismiss={() => setTapReason(null)} />
           </>
         )}
         {!lastPlayer && faction && (

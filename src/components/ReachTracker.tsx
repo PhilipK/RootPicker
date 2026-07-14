@@ -43,7 +43,7 @@ export function ReachTracker({ selectedIds }: { selectedIds: Set<string> }) {
       <div className="inner">
         <div className="row1">
           <span className="totals">
-            Reach <b>{total}</b> / <span>{effTarget}</span> needed
+            <b>{n}</b>/{playerCount} factions &middot; reach <b>{total}</b> / {effTarget}
           </span>
           <span className={`stamp ${cls}`}>{text}</span>
         </div>

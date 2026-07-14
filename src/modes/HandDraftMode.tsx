@@ -7,6 +7,9 @@ import { byId, REACH_TARGET } from "../data/factions";
 import { Explainer } from "../components/Explainer";
 import { NameInputs } from "../components/NameInputs";
 import { FactionCard } from "../components/FactionCard";
+import { GridLegend } from "../components/GridLegend";
+import { SetupHero } from "../components/SetupHero";
+import { PassDeviceGate } from "../components/PassDeviceGate";
 import { OrderList, type OrderItem } from "../components/OrderList";
 import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
@@ -96,17 +99,18 @@ export function HandDraftMode() {
   if (state.phase === "setup") {
     return (
       <section>
-        <h2>Seats</h2>
-        <p className="note">Names are optional. Seating order and first player are randomized when you deal.</p>
-        <NameInputs />
-
-        <h2>Deal</h2>
         <Explainer id="exp-hand-deal" summary="How this works">
           Each player gets a secret hand of <span>{playerCount >= 5 ? "two" : "three"}</span> factions and picks
           one, passing the device around. Hands are dealt so the table can always reach the required total and
           field at least one militant. The Second Vagabond sits out, and either the Vagabond or the Knaves is
           randomly left out of the deck (A.8.1).
         </Explainer>
+        <SetupHero />
+        <h2>Seats</h2>
+        <p className="note">Names are optional. Seating order and first player are randomized when you deal.</p>
+        <NameInputs />
+
+        <h2>Deal</h2>
         <label className="note" style={{ display: "block" }}>
           <input type="checkbox" checked={adventurous} onChange={(e) => setAdventurous(e.target.checked)} />{" "}
           Adventurous group — allow any mix that reaches 17+
@@ -135,30 +139,12 @@ export function HandDraftMode() {
     };
   });
 
-  if (state.phase === "pass") {
-    return (
-      <section>
-        <h2>Turn Order</h2>
-        <OrderList items={orderItems} />
-        <div className="picker-banner">
-          Pass the device to <b>{state.seats[state.pickQueue[state.picks.length]]}</b> — only they should look.
-        </div>
-        <div className="btn-row">
-          <button className="btn" onClick={() => dispatch({ type: "SHOW" })}>
-            Show my hand
-          </button>
-          <button className="btn secondary" disabled={!state.picks.length} onClick={() => dispatch({ type: "UNDO" })}>
-            Undo last pick
-          </button>
-          <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>Start over</ConfirmResetButton>
-        </div>
-      </section>
-    );
-  }
-
-  if (state.phase === "pick") {
+  if (state.phase === "pass" || state.phase === "pick") {
     const qi = state.picks.length;
     const seat = state.pickQueue[qi];
+    const actorName = state.seats[seat];
+    const actorKey = `hand-${qi}`;
+
     const handsQ = state.pickQueue.map((si) => state.hands[si]);
     const sum = state.picks.reduce((s, p) => s + byId[p.factionId].reach, 0);
     const mil = state.picks.some((p) => byId[p.factionId].type === "militant");
@@ -173,37 +159,64 @@ export function HandDraftMode() {
     const hiddenCount = state.hands[seat].length - shown.length;
 
     return (
-      <section>
-        <div className="picker-banner">
-          <b>{state.seats[seat]}</b> — pick one faction.
-        </div>
-        <div className="grid">
-          {shown.map((id) => {
-            const f = byId[id];
-            return (
-              <FactionCard
-                key={id}
-                faction={f}
-                reachBadge
-                onClick={() => dispatch({ type: "CHOOSE", factionId: id, playerCount })}
-              />
-            );
-          })}
-        </div>
-        <p className="note" style={{ color: "var(--danger)" }}>
-          {hiddenCount
-            ? `${hiddenCount === 1 ? "One dealt faction is" : hiddenCount + " dealt factions are"} hidden: picking ${
-                hiddenCount === 1 ? "it" : "them"
-              } would leave the table short on reach or militants, or leave a later player with no real choice. ${
-                hiddenCount === 1 ? "It shows up" : "They show up"
-              } in the reveal at the end.`
-            : ""}
-        </p>
-        <p className="note">
-          Pick one — it becomes public and you set it up right away. The rest of your hand stays secret until the
-          end.
-        </p>
-      </section>
+      <PassDeviceGate
+        actorName={actorName}
+        actorKey={actorKey}
+        onAcknowledge={() => {
+          if (state.phase === "pass") dispatch({ type: "SHOW" });
+        }}
+        detail={
+          <>
+            <OrderList items={orderItems} />
+          </>
+        }
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn secondary"
+              disabled={!state.picks.length}
+              onClick={() => dispatch({ type: "UNDO" })}
+            >
+              Undo last pick
+            </button>
+            <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>Start over</ConfirmResetButton>
+          </>
+        }
+      >
+        <section>
+          <div className="picker-banner">
+            <b>{actorName}</b> — pick one faction.
+          </div>
+          <GridLegend />
+          <div className="grid">
+            {shown.map((id) => {
+              const f = byId[id];
+              return (
+                <FactionCard
+                  key={id}
+                  faction={f}
+                  reachBadge
+                  onClick={() => dispatch({ type: "CHOOSE", factionId: id, playerCount })}
+                />
+              );
+            })}
+          </div>
+          <p className="note" style={{ color: "var(--danger)" }}>
+            {hiddenCount
+              ? `${hiddenCount === 1 ? "One dealt faction is" : hiddenCount + " dealt factions are"} hidden: picking ${
+                  hiddenCount === 1 ? "it" : "them"
+                } would leave the table short on reach or militants, or leave a later player with no real choice. ${
+                  hiddenCount === 1 ? "It shows up" : "They show up"
+                } in the reveal at the end.`
+              : ""}
+          </p>
+          <p className="note">
+            Pick one — it becomes public and you set it up right away. The rest of your hand stays secret until the
+            end.
+          </p>
+        </section>
+      </PassDeviceGate>
     );
   }
 

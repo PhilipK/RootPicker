@@ -13,6 +13,7 @@ import { RiverfolkAuctionMode } from "./modes/RiverfolkAuctionMode";
 import { BountyDraftMode } from "./modes/BountyDraftMode";
 import { TeachingTiersMode } from "./modes/TeachingTiersMode";
 import { WishlistMode } from "./modes/WishlistMode";
+import { PotluckDraftMode } from "./modes/PotluckDraftMode";
 import { SettingsMode } from "./modes/SettingsMode";
 
 function AppShell() {
@@ -45,6 +46,7 @@ function AppShell() {
             {mode === "bounty" && <BountyDraftMode />}
             {mode === "tt" && <TeachingTiersMode />}
             {mode === "wish" && <WishlistMode />}
+            {mode === "potluck" && <PotluckDraftMode />}
             {mode === "settings" && <SettingsMode />}
           </>
         )}

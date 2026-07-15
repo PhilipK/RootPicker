@@ -3,6 +3,7 @@ import { DEFAULT_OWNED_HIRELING_IDS, HIRELINGS, HIRELING_PACKS, type HirelingPac
 import { useAppContext } from "../context/AppContext";
 import { MAX_RAFFLE_TICKETS, MIN_RAFFLE_TICKETS } from "../lib/raffle";
 import { FactionCard } from "../components/FactionCard";
+import { HirelingThumb } from "../components/HirelingThumb";
 
 export function SettingsMode() {
   const {
@@ -163,6 +164,7 @@ export function SettingsMode() {
                 const has = ownedHirelingIds.has(h.id);
                 return (
                   <button key={h.id} className="hireling-chip" aria-pressed={has} onClick={() => toggleHireling(h.id)}>
+                    <HirelingThumb hireling={h} small />
                     {h.promoted} / {h.demoted}
                   </button>
                 );

@@ -2,9 +2,8 @@ import { useMemo } from "react";
 import { useAppContext } from "../context/AppContext";
 import { demoteCount, drawHirelings, eligibleHirelings } from "../lib/hirelingDraw";
 import { useHirelingDraw } from "../lib/store";
-import { byHirelingId } from "../data/hirelings";
+import { byHirelingId, hirelingCardSearchUrl, hirelingImageSrc } from "../data/hirelings";
 import { Explainer } from "./Explainer";
-import { SummaryList, type SummaryItem } from "./SummaryList";
 
 function fingerprintOf(finalFactionIds: Set<string>, ownedHirelingIds: Set<string>, playerCount: number): string {
   return JSON.stringify([[...finalFactionIds].sort(), [...ownedHirelingIds].sort(), playerCount]);
@@ -43,14 +42,6 @@ export function HirelingSetup({ storageKey, finalFactionIds }: { storageKey: str
     });
   };
 
-  const summaryItems: SummaryItem[] = (valid?.picks ?? []).map((p) => {
-    const h = byHirelingId[p.id];
-    return {
-      primary: p.demoted ? `${h.demoted} (Demoted)` : h.promoted,
-      sub: p.demoted ? `demoted side — promoted side is ${h.promoted}` : `flip to “${h.demoted}” if this one demotes`,
-    };
-  });
-
   return (
     <>
       <h2>Hirelings (optional)</h2>
@@ -70,7 +61,20 @@ export function HirelingSetup({ storageKey, finalFactionIds }: { storageKey: str
               more packs in Settings for a full deal of three.
             </p>
           )}
-          <SummaryList items={summaryItems} />
+          <ul className="hireling-reveal">
+            {(valid?.picks ?? []).map((p) => {
+              const h = byHirelingId[p.id];
+              const shownName = p.demoted ? h.demoted : h.promoted;
+              return (
+                <li key={p.id}>
+                  <a href={hirelingCardSearchUrl(shownName)} target="_blank" rel="noreferrer">
+                    <img src={hirelingImageSrc(h, p.demoted)} alt={shownName} />
+                    {p.demoted && <span className="demoted-badge">Demoted</span>}
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
           <div className="btn-row">
             <button className="btn secondary" onClick={draw} disabled={previewEligible === 0}>
               Redraw

@@ -17,6 +17,8 @@ import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
 import { HirelingSetup } from "../components/HirelingSetup";
+import { VagabondCharacterSetup } from "../components/VagabondCharacterSetup";
+import { KnaveCaptainSetup } from "../components/KnaveCaptainSetup";
 
 interface RaffleState {
   phase: "setup" | "pass" | "tickets" | "draw" | "done";
@@ -381,6 +383,8 @@ export function RaffleMode() {
       <h2>Before You Begin</h2>
       <SetupChecklist variant="standard" />
       <HirelingSetup storageKey="raffle" finalFactionIds={finalFactionIds} />
+      <VagabondCharacterSetup storageKey="raffle" finalFactionIds={finalFactionIds} />
+      <KnaveCaptainSetup storageKey="raffle" finalFactionIds={finalFactionIds} />
       <div className="btn-row">
         <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>New game</ConfirmResetButton>
       </div>

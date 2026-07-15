@@ -9,6 +9,8 @@ import { GridLegend } from "../components/GridLegend";
 import { DisabledReasonNote } from "../components/DisabledReasonNote";
 import { ReachTracker } from "../components/ReachTracker";
 import { HirelingSetup } from "../components/HirelingSetup";
+import { VagabondCharacterSetup } from "../components/VagabondCharacterSetup";
+import { KnaveCaptainSetup } from "../components/KnaveCaptainSetup";
 
 export function SimpleMode() {
   const { playerCount, availableFactions, adventurous, setAdventurous, effTarget } = useAppContext();
@@ -76,6 +78,8 @@ export function SimpleMode() {
       <DisabledReasonNote reason={tapReason} onDismiss={() => setTapReason(null)} />
       <ReachTracker selectedIds={selected} />
       {legal && <HirelingSetup storageKey="simple" finalFactionIds={selected} />}
+      {legal && <VagabondCharacterSetup storageKey="simple" finalFactionIds={selected} />}
+      {legal && <KnaveCaptainSetup storageKey="simple" finalFactionIds={selected} />}
     </section>
   );
 }

@@ -1,9 +1,16 @@
 import { DEFAULT_OWNED_IDS, FACTIONS } from "../data/factions";
-import { DEFAULT_OWNED_HIRELING_IDS, HIRELINGS, HIRELING_PACKS, type HirelingPackId } from "../data/hirelings";
+import { DEFAULT_OWNED_HIRELING_IDS, HIRELINGS, HIRELING_PACKS, hirelingImageSrc, type HirelingPackId } from "../data/hirelings";
+import {
+  DEFAULT_OWNED_VAGABOND_CHARACTER_IDS,
+  VAGABOND_CHARACTERS,
+  VAGABOND_CHARACTER_PACKS,
+  vagabondCharacterImageSrc,
+  type VagabondCharacterPackId,
+} from "../data/vagabondCharacters";
 import { useAppContext } from "../context/AppContext";
 import { MAX_RAFFLE_TICKETS, MIN_RAFFLE_TICKETS } from "../lib/raffle";
 import { FactionCard } from "../components/FactionCard";
-import { HirelingThumb } from "../components/HirelingThumb";
+import { CardThumb } from "../components/CardThumb";
 
 export function SettingsMode() {
   const {
@@ -19,6 +26,8 @@ export function SettingsMode() {
     setOwnedIds,
     ownedHirelingIds,
     setOwnedHirelingIds,
+    ownedVagabondCharacterIds,
+    setOwnedVagabondCharacterIds,
   } = useAppContext();
 
   const toggleOwned = (id: string) => {
@@ -41,6 +50,21 @@ export function SettingsMode() {
     const next = new Set(ownedHirelingIds);
     ids.forEach((id) => (allOwned ? next.delete(id) : next.add(id)));
     setOwnedHirelingIds(next);
+  };
+
+  const toggleVagabondCharacter = (id: string) => {
+    const next = new Set(ownedVagabondCharacterIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setOwnedVagabondCharacterIds(next);
+  };
+
+  const toggleVagabondCharacterPack = (packId: VagabondCharacterPackId) => {
+    const ids = VAGABOND_CHARACTERS.filter((c) => c.pack === packId).map((c) => c.id);
+    const allOwned = ids.every((id) => ownedVagabondCharacterIds.has(id));
+    const next = new Set(ownedVagabondCharacterIds);
+    ids.forEach((id) => (allOwned ? next.delete(id) : next.add(id)));
+    setOwnedVagabondCharacterIds(next);
   };
 
   return (
@@ -151,21 +175,69 @@ export function SettingsMode() {
         const inPack = HIRELINGS.filter((h) => h.pack === pack.id);
         const ownedCount = inPack.filter((h) => ownedHirelingIds.has(h.id)).length;
         return (
-          <div className="hireling-pack" key={pack.id}>
+          <div className="pack-group" key={pack.id}>
             <button
-              className="hireling-pack-head"
+              className="pack-group-head"
               aria-pressed={ownedCount === inPack.length}
               onClick={() => toggleHirelingPack(pack.id)}
             >
               {pack.label} <span className="note">({ownedCount}/{inPack.length})</span>
             </button>
-            <div className="hireling-chip-row">
+            <div className="pack-chip-row">
               {inPack.map((h) => {
                 const has = ownedHirelingIds.has(h.id);
                 return (
-                  <button key={h.id} className="hireling-chip" aria-pressed={has} onClick={() => toggleHireling(h.id)}>
-                    <HirelingThumb hireling={h} small />
+                  <button key={h.id} className="pack-chip" aria-pressed={has} onClick={() => toggleHireling(h.id)}>
+                    <CardThumb src={hirelingImageSrc(h, false)} />
                     {h.promoted} / {h.demoted}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+
+      <h2>Vagabond Characters</h2>
+      <p className="note">
+        Which Vagabond character cards you own — the character deal after any faction pick (Law A.8.2.III) draws
+        only from what's checked here.
+      </p>
+      <div className="btn-row">
+        <button
+          className="btn secondary"
+          onClick={() => setOwnedVagabondCharacterIds(new Set(DEFAULT_OWNED_VAGABOND_CHARACTER_IDS))}
+        >
+          Select all
+        </button>
+        <button className="btn secondary" onClick={() => setOwnedVagabondCharacterIds(new Set())}>
+          Select none
+        </button>
+      </div>
+      {VAGABOND_CHARACTER_PACKS.map((pack) => {
+        const inPack = VAGABOND_CHARACTERS.filter((c) => c.pack === pack.id);
+        const ownedCount = inPack.filter((c) => ownedVagabondCharacterIds.has(c.id)).length;
+        return (
+          <div className="pack-group" key={pack.id}>
+            <button
+              className="pack-group-head"
+              aria-pressed={ownedCount === inPack.length}
+              onClick={() => toggleVagabondCharacterPack(pack.id)}
+            >
+              {pack.label} <span className="note">({ownedCount}/{inPack.length})</span>
+            </button>
+            <div className="pack-chip-row">
+              {inPack.map((c) => {
+                const has = ownedVagabondCharacterIds.has(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    className="pack-chip"
+                    aria-pressed={has}
+                    onClick={() => toggleVagabondCharacter(c.id)}
+                  >
+                    <CardThumb src={vagabondCharacterImageSrc(c)} />
+                    {c.name}
                   </button>
                 );
               })}

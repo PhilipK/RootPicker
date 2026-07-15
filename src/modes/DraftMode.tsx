@@ -14,6 +14,8 @@ import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
 import { HirelingSetup } from "../components/HirelingSetup";
+import { VagabondCharacterSetup } from "../components/VagabondCharacterSetup";
+import { KnaveCaptainSetup } from "../components/KnaveCaptainSetup";
 
 interface PoolSlot {
   faction: Faction;
@@ -241,6 +243,8 @@ export function DraftMode() {
       <h2>Before You Begin</h2>
       <SetupChecklist variant="advanced" />
       <HirelingSetup storageKey="draft" finalFactionIds={finalFactionIds} />
+      <VagabondCharacterSetup storageKey="draft" finalFactionIds={finalFactionIds} />
+      <KnaveCaptainSetup storageKey="draft" finalFactionIds={finalFactionIds} />
       <div className="btn-row">
         <button className="btn secondary" onClick={() => dispatch({ type: "UNDO" })}>
           Undo last pick

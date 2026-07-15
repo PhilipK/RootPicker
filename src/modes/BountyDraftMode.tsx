@@ -29,6 +29,8 @@ import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
 import { HirelingSetup } from "../components/HirelingSetup";
+import { VagabondCharacterSetup } from "../components/VagabondCharacterSetup";
+import { KnaveCaptainSetup } from "../components/KnaveCaptainSetup";
 
 interface BountyCore {
   phase: "setup" | "act" | "done";
@@ -351,6 +353,8 @@ export function BountyDraftMode() {
       <h2>Before You Begin</h2>
       <SetupChecklist variant="standard" />
       <HirelingSetup storageKey="bounty" finalFactionIds={finalFactionIds} />
+      <VagabondCharacterSetup storageKey="bounty" finalFactionIds={finalFactionIds} />
+      <KnaveCaptainSetup storageKey="bounty" finalFactionIds={finalFactionIds} />
       <div className="btn-row">
         <button className="btn secondary" disabled={!state.past.length} onClick={() => dispatch({ type: "UNDO" })}>
           Undo last action

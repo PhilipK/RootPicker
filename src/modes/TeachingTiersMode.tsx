@@ -16,6 +16,8 @@ import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
 import { HirelingSetup } from "../components/HirelingSetup";
+import { VagabondCharacterSetup } from "../components/VagabondCharacterSetup";
+import { KnaveCaptainSetup } from "../components/KnaveCaptainSetup";
 
 interface TTPick {
   seatIndex: number;
@@ -257,6 +259,8 @@ export function TeachingTiersMode() {
       <h2>Before You Begin</h2>
       <SetupChecklist variant="standard" />
       <HirelingSetup storageKey="tt" finalFactionIds={finalFactionIds} />
+      <VagabondCharacterSetup storageKey="tt" finalFactionIds={finalFactionIds} />
+      <KnaveCaptainSetup storageKey="tt" finalFactionIds={finalFactionIds} />
       <div className="btn-row">
         <button className="btn secondary" onClick={() => dispatch({ type: "UNDO" })}>
           Undo last pick

@@ -17,6 +17,8 @@ import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
 import { HirelingSetup } from "../components/HirelingSetup";
+import { VagabondCharacterSetup } from "../components/VagabondCharacterSetup";
+import { KnaveCaptainSetup } from "../components/KnaveCaptainSetup";
 
 interface CutPick {
   seatIndex: number;
@@ -270,6 +272,8 @@ export function CutChooseMode() {
       <h2>Before You Begin</h2>
       <SetupChecklist variant="standard" />
       <HirelingSetup storageKey="cut" finalFactionIds={finalFactionIds} />
+      <VagabondCharacterSetup storageKey="cut" finalFactionIds={finalFactionIds} />
+      <KnaveCaptainSetup storageKey="cut" finalFactionIds={finalFactionIds} />
       <div className="btn-row">
         <button className="btn secondary" onClick={() => dispatch({ type: "UNDO" })}>
           Undo last pick

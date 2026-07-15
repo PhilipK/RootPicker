@@ -14,6 +14,8 @@ import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
 import { HirelingSetup } from "../components/HirelingSetup";
+import { VagabondCharacterSetup } from "../components/VagabondCharacterSetup";
+import { KnaveCaptainSetup } from "../components/KnaveCaptainSetup";
 
 export function PotluckDraftMode() {
   const { playerCount, availableFactions, playerNames, adventurous, setAdventurous, effTarget } = useAppContext();
@@ -194,6 +196,8 @@ export function PotluckDraftMode() {
       <h2>Before You Begin</h2>
       <SetupChecklist variant="standard" />
       <HirelingSetup storageKey="potluck" finalFactionIds={finalFactionIds} />
+      <VagabondCharacterSetup storageKey="potluck" finalFactionIds={finalFactionIds} />
+      <KnaveCaptainSetup storageKey="potluck" finalFactionIds={finalFactionIds} />
       <div className="btn-row">
         <button className="btn secondary" disabled={!state.past.length} onClick={() => dispatch({ type: "UNDO" })}>
           Undo last pick

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { DEFAULT_OWNED_IDS } from "../data/factions";
 import { DEFAULT_OWNED_HIRELING_IDS } from "../data/hirelings";
+import { DEFAULT_OWNED_VAGABOND_CHARACTER_IDS } from "../data/vagabondCharacters";
 import { MAX_RAFFLE_TICKETS, MIN_RAFFLE_TICKETS } from "./raffle";
 import type { ModeId, Tier } from "../types";
 
@@ -104,6 +105,34 @@ export interface StoredHirelingDraw {
     caller, so finishing one mode never clobbers another's in-progress draw. */
 export function useHirelingDraw(modeKey: string): [StoredHirelingDraw | null, (v: StoredHirelingDraw | null) => void] {
   return useLocalStorage<StoredHirelingDraw | null>(`rootpicker.hirelings.${modeKey}`, null);
+}
+
+export function useOwnedVagabondCharacterIds(): [Set<string>, (v: Set<string>) => void] {
+  return usePersistedSet("rootpicker.ownedVagabondCharacterIds", DEFAULT_OWNED_VAGABOND_CHARACTER_IDS);
+}
+
+export interface StoredVagabondCharacterDraw {
+  fingerprint: string;
+  characterIds: string[];
+}
+
+/** One draw per mode, same fingerprint-invalidation pattern as useHirelingDraw. */
+export function useVagabondCharacterDraw(
+  modeKey: string,
+): [StoredVagabondCharacterDraw | null, (v: StoredVagabondCharacterDraw | null) => void] {
+  return useLocalStorage<StoredVagabondCharacterDraw | null>(`rootpicker.vagabondCharacters.${modeKey}`, null);
+}
+
+export interface StoredKnaveCaptainDraw {
+  fingerprint: string;
+  dealtIds: string[];
+  excludedId: string | null;
+}
+
+export function useKnaveCaptainDraw(
+  modeKey: string,
+): [StoredKnaveCaptainDraw | null, (v: StoredKnaveCaptainDraw | null) => void] {
+  return useLocalStorage<StoredKnaveCaptainDraw | null>(`rootpicker.knaveCaptains.${modeKey}`, null);
 }
 
 export function useWishCount(): [number, (v: number) => void] {

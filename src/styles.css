@@ -351,35 +351,44 @@ input[type="text"] {
 .summary-list img { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; object-position: 50% 15%; }
 .summary-list .fac { font-weight: 700; }
 .summary-list .sub { color: var(--ink-soft); font-size: .88rem; }
-/* ---------- hirelings ---------- */
-.hireling-pack { margin: 12px 0; }
-.hireling-pack-head {
+/* ---------- settings pack/chip groups (hirelings, vagabond characters) ---------- */
+.pack-group { margin: 12px 0; }
+.pack-group-head {
   font: inherit; font-variant: small-caps; letter-spacing: .05em; font-size: 1rem;
   background: none; border: none; padding: 4px 0; cursor: pointer; color: var(--ink-soft);
 }
-.hireling-pack-head[aria-pressed="true"] { color: var(--ink); font-weight: 700; }
-.hireling-chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }
-.hireling-chip {
+.pack-group-head[aria-pressed="true"] { color: var(--ink); font-weight: 700; }
+.pack-chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }
+.pack-chip {
   display: inline-flex; align-items: center; gap: 8px;
   font: inherit; font-size: .85rem; background: var(--paper); color: var(--ink-soft);
   border: 2px solid var(--ink-soft); border-radius: 999px; padding: 5px 14px 5px 5px; cursor: pointer;
 }
-.hireling-chip[aria-pressed="true"] { border-color: var(--moss); color: var(--ink); font-weight: 700; }
+.pack-chip[aria-pressed="true"] { border-color: var(--moss); color: var(--ink); font-weight: 700; }
 
-.hireling-thumb {
-  flex: none; width: 56px; height: 40px; border-radius: 6px;
-  background: var(--paper-deep); object-fit: cover; object-position: 50% 65%;
+.pack-chip-thumb { flex: none; width: 32px; height: 32px; border-radius: 5px; background: var(--paper-deep); object-fit: cover; }
+
+/* ---------- dealt-card reveals (hirelings, vagabond characters, knave captains) ---------- */
+.hireling-reveal, .character-reveal, .captain-reveal {
+  list-style: none; margin: 10px 0; padding: 0; display: grid; gap: 12px;
 }
-.hireling-thumb.small { width: 32px; height: 23px; border-radius: 4px; }
-
-.hireling-reveal { list-style: none; margin: 10px 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
-.hireling-reveal li {
+.hireling-reveal { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.character-reveal, .captain-reveal { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+.hireling-reveal li, .character-reveal li, .captain-reveal li {
   border: 2px solid var(--ink-soft); border-radius: 10px; overflow: hidden;
   background: var(--paper); box-shadow: 0 3px 8px rgba(58,46,28,.2);
 }
-.hireling-reveal a { display: block; position: relative; line-height: 0; }
-.hireling-reveal img { display: block; width: 100%; height: auto; aspect-ratio: 1241 / 749; object-fit: cover; }
-.hireling-reveal .demoted-badge {
+.hireling-reveal a, .character-reveal a, .captain-reveal button.card-tap {
+  display: block; position: relative; line-height: 0; width: 100%; padding: 0; border: none; cursor: pointer;
+}
+.hireling-reveal img, .character-reveal img, .captain-reveal img { display: block; width: 100%; height: auto; object-fit: cover; }
+.hireling-reveal img { aspect-ratio: 1241 / 749; }
+.character-reveal img { aspect-ratio: 665 / 932; }
+.captain-reveal img { aspect-ratio: 1152 / 1570; }
+.captain-reveal li.excluded img { opacity: .35; }
+.captain-reveal .view-card-link { display: block; text-align: center; padding: 5px; font-size: .78rem; }
+
+.demoted-badge {
   position: absolute; top: 8px; left: 8px;
   background: var(--ink); color: var(--paper); font-variant: small-caps; letter-spacing: .05em;
   font-size: .78rem; padding: 3px 10px; border-radius: 999px;

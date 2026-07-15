@@ -5,6 +5,7 @@ import {
   useAdventurous,
   useOwnedFactionIds,
   useOwnedHirelingIds,
+  useOwnedVagabondCharacterIds,
   usePlayerCount,
   usePlayerNames,
   useRaffleTicketCountOverride,
@@ -24,6 +25,8 @@ interface AppContextValue {
   availableFactions: Faction[];
   ownedHirelingIds: Set<string>;
   setOwnedHirelingIds: (v: Set<string>) => void;
+  ownedVagabondCharacterIds: Set<string>;
+  setOwnedVagabondCharacterIds: (v: Set<string>) => void;
   wishCount: number;
   setWishCount: (n: number) => void;
   adventurous: boolean;
@@ -49,6 +52,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [names, setNames] = usePlayerNames();
   const [ownedIds, setOwnedIds] = useOwnedFactionIds();
   const [ownedHirelingIds, setOwnedHirelingIds] = useOwnedHirelingIds();
+  const [ownedVagabondCharacterIds, setOwnedVagabondCharacterIds] = useOwnedVagabondCharacterIds();
   const [wishCount, setWishCount] = useWishCount();
   const [adventurous, setAdventurous] = useAdventurous();
   const [viewMode, setViewMode] = useViewMode();
@@ -73,6 +77,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     availableFactions,
     ownedHirelingIds,
     setOwnedHirelingIds,
+    ownedVagabondCharacterIds,
+    setOwnedVagabondCharacterIds,
     wishCount,
     setWishCount,
     adventurous,

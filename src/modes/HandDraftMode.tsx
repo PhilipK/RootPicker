@@ -16,6 +16,8 @@ import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
 import { HirelingSetup } from "../components/HirelingSetup";
+import { VagabondCharacterSetup } from "../components/VagabondCharacterSetup";
+import { KnaveCaptainSetup } from "../components/KnaveCaptainSetup";
 
 interface HandPick {
   seatIndex: number;
@@ -254,6 +256,8 @@ export function HandDraftMode() {
       <h2>Before You Begin</h2>
       <SetupChecklist variant="standard" />
       <HirelingSetup storageKey="hand" finalFactionIds={finalFactionIds} />
+      <VagabondCharacterSetup storageKey="hand" finalFactionIds={finalFactionIds} />
+      <KnaveCaptainSetup storageKey="hand" finalFactionIds={finalFactionIds} />
       <div className="btn-row">
         <button className="btn secondary" onClick={() => dispatch({ type: "UNDO" })}>
           Undo last pick

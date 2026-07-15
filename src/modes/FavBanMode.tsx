@@ -28,6 +28,8 @@ import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
 import { HirelingSetup } from "../components/HirelingSetup";
+import { VagabondCharacterSetup } from "../components/VagabondCharacterSetup";
+import { KnaveCaptainSetup } from "../components/KnaveCaptainSetup";
 
 interface FavModeState {
   phase: "setup" | "pass" | "choose" | "reveal" | "assign-pass" | "assign-choose" | "assign-reveal" | "done";
@@ -494,6 +496,8 @@ export function FavBanMode() {
       <h2>Before You Begin</h2>
       <SetupChecklist variant="standard" />
       <HirelingSetup storageKey="fav" finalFactionIds={finalFactionIds} />
+      <VagabondCharacterSetup storageKey="fav" finalFactionIds={finalFactionIds} />
+      <KnaveCaptainSetup storageKey="fav" finalFactionIds={finalFactionIds} />
       <div className="btn-row">
         <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>New game</ConfirmResetButton>
       </div>

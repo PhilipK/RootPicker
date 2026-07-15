@@ -15,6 +15,7 @@ import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
+import { HirelingSetup } from "../components/HirelingSetup";
 
 interface WishState {
   phase: "setup" | "pass" | "rank" | "done";
@@ -187,6 +188,7 @@ export function WishlistMode() {
   const { assign, score, total } = state.result!;
   const rec = REACH_TARGET[playerCount];
   const maxScore = state.seats.length * wishPoints(0, wishCount);
+  const finalFactionIds = new Set(assign);
   const summaryItems: SummaryItem[] = state.seats.map((p, i) => {
     const id = assign[i];
     const f = byId[id];
@@ -217,6 +219,7 @@ export function WishlistMode() {
       <SummaryList items={summaryItems} />
       <h2>Before You Begin</h2>
       <SetupChecklist variant="standard" />
+      <HirelingSetup storageKey="wish" finalFactionIds={finalFactionIds} />
       <div className="btn-row">
         <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>New game</ConfirmResetButton>
       </div>

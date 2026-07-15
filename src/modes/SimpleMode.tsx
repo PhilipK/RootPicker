@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAppContext } from "../context/AppContext";
+import { byId } from "../data/factions";
 import { reachBlockReason } from "../lib/reach";
 import { usePersistedSet } from "../lib/store";
 import { Explainer } from "../components/Explainer";
@@ -7,6 +8,7 @@ import { FactionCard } from "../components/FactionCard";
 import { GridLegend } from "../components/GridLegend";
 import { DisabledReasonNote } from "../components/DisabledReasonNote";
 import { ReachTracker } from "../components/ReachTracker";
+import { HirelingSetup } from "../components/HirelingSetup";
 
 export function SimpleMode() {
   const { playerCount, availableFactions, adventurous, setAdventurous, effTarget } = useAppContext();
@@ -35,6 +37,9 @@ export function SimpleMode() {
   };
 
   const blockReason = (id: string) => reachBlockReason(selected, id, playerCount, availableFactions, effTarget);
+
+  const total = [...selected].reduce((s, id) => s + byId[id].reach, 0);
+  const legal = selected.size === playerCount && total >= 17;
 
   return (
     <section>
@@ -70,6 +75,7 @@ export function SimpleMode() {
       </div>
       <DisabledReasonNote reason={tapReason} onDismiss={() => setTapReason(null)} />
       <ReachTracker selectedIds={selected} />
+      {legal && <HirelingSetup storageKey="simple" finalFactionIds={selected} />}
     </section>
   );
 }

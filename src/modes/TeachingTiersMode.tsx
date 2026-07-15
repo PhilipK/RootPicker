@@ -15,6 +15,7 @@ import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
+import { HirelingSetup } from "../components/HirelingSetup";
 
 interface TTPick {
   seatIndex: number;
@@ -232,6 +233,7 @@ export function TeachingTiersMode() {
   // done
   const total = state.picks.reduce((s, p) => s + byId[p.id].reach, 0);
   const rec = REACH_TARGET[playerCount];
+  const finalFactionIds = new Set(state.picks.map((p) => p.id));
   const summaryItems: SummaryItem[] = state.seats.map((p, i) => {
     const pick = state.picks.find((x) => x.seatIndex === i)!;
     const f = byId[pick.id];
@@ -254,6 +256,7 @@ export function TeachingTiersMode() {
       <SummaryList items={summaryItems} />
       <h2>Before You Begin</h2>
       <SetupChecklist variant="standard" />
+      <HirelingSetup storageKey="tt" finalFactionIds={finalFactionIds} />
       <div className="btn-row">
         <button className="btn secondary" onClick={() => dispatch({ type: "UNDO" })}>
           Undo last pick

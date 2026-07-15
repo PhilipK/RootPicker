@@ -15,6 +15,7 @@ import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
+import { HirelingSetup } from "../components/HirelingSetup";
 
 interface HandPick {
   seatIndex: number;
@@ -223,6 +224,7 @@ export function HandDraftMode() {
   // done
   const total = state.picks.reduce((s, p) => s + byId[p.factionId].reach, 0);
   const rec = REACH_TARGET[playerCount];
+  const finalFactionIds = new Set(state.picks.map((p) => p.factionId));
   const summaryItems: SummaryItem[] = state.seats.map((name, i) => {
     const pick = state.picks.find((p) => p.seatIndex === i)!;
     const f = byId[pick.factionId];
@@ -251,6 +253,7 @@ export function HandDraftMode() {
       <SummaryList items={summaryItems} />
       <h2>Before You Begin</h2>
       <SetupChecklist variant="standard" />
+      <HirelingSetup storageKey="hand" finalFactionIds={finalFactionIds} />
       <div className="btn-row">
         <button className="btn secondary" onClick={() => dispatch({ type: "UNDO" })}>
           Undo last pick

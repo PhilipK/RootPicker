@@ -18,6 +18,7 @@ import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
+import { HirelingSetup } from "../components/HirelingSetup";
 
 interface TradeState {
   phase: "setup" | "pass" | "rank" | "done";
@@ -246,6 +247,7 @@ export function TradingPostMode() {
   const { assign, cycles } = state.result!;
   const total = assign.reduce((s, id) => s + byId[id].reach, 0);
   const rec = REACH_TARGET[playerCount];
+  const finalFactionIds = new Set(assign);
 
   const summaryItems: SummaryItem[] = state.seats.map((name, i) => {
     const f = byId[assign[i]];
@@ -305,6 +307,7 @@ export function TradingPostMode() {
       <SummaryList items={summaryItems} />
       <h2>Before You Begin</h2>
       <SetupChecklist variant="standard" />
+      <HirelingSetup storageKey="trade" finalFactionIds={finalFactionIds} />
       <div className="btn-row">
         <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>New game</ConfirmResetButton>
       </div>

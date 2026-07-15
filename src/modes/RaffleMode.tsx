@@ -16,6 +16,7 @@ import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
+import { HirelingSetup } from "../components/HirelingSetup";
 
 interface RaffleState {
   phase: "setup" | "pass" | "tickets" | "draw" | "done";
@@ -351,6 +352,7 @@ export function RaffleMode() {
 
   // done
   const total = state.assign.reduce((s, id) => s + byId[id!].reach, 0);
+  const finalFactionIds = new Set(state.assign as string[]);
   const summaryItems: SummaryItem[] = state.seats.map((name, i) => {
     const f = byId[state.assign[i]!];
     const via = state.events.find((e) => (e.type === "won" || e.type === "fill") && e.seatIndex === i)!;
@@ -378,6 +380,7 @@ export function RaffleMode() {
       <ul className="reveal-log">{logItems}</ul>
       <h2>Before You Begin</h2>
       <SetupChecklist variant="standard" />
+      <HirelingSetup storageKey="raffle" finalFactionIds={finalFactionIds} />
       <div className="btn-row">
         <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>New game</ConfirmResetButton>
       </div>

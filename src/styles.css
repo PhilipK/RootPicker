@@ -351,6 +351,20 @@ input[type="text"] {
 .summary-list img { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; object-position: 50% 15%; }
 .summary-list .fac { font-weight: 700; }
 .summary-list .sub { color: var(--ink-soft); font-size: .88rem; }
+/* ---------- hirelings ---------- */
+.hireling-pack { margin: 12px 0; }
+.hireling-pack-head {
+  font: inherit; font-variant: small-caps; letter-spacing: .05em; font-size: 1rem;
+  background: none; border: none; padding: 4px 0; cursor: pointer; color: var(--ink-soft);
+}
+.hireling-pack-head[aria-pressed="true"] { color: var(--ink); font-weight: 700; }
+.hireling-chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }
+.hireling-chip {
+  font: inherit; font-size: .85rem; background: var(--paper); color: var(--ink-soft);
+  border: 2px solid var(--ink-soft); border-radius: 999px; padding: 6px 14px; cursor: pointer;
+}
+.hireling-chip[aria-pressed="true"] { border-color: var(--moss); color: var(--ink); font-weight: 700; }
+
 .checklist { margin: 8px 0 0; padding-left: 1.3em; }
 .checklist li { margin: 4px 0; }
 .law-ref { color: var(--ink-soft); font-size: .8rem; }

@@ -17,6 +17,7 @@ import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
+import { HirelingSetup } from "../components/HirelingSetup";
 
 export const MAX_BID = 5;
 
@@ -288,6 +289,7 @@ export function RiverfolkAuctionMode() {
   const total = state.picks.reduce((s, p) => s + byId[p.id].reach, 0);
   const rec = REACH_TARGET[playerCount];
   const doneBonuses = startingBonuses(state.bids);
+  const finalFactionIds = new Set(state.picks.map((p) => p.id));
   const summaryItems: SummaryItem[] = state.seats.map((name, i) => {
     const pick = state.picks.find((p) => p.seatIndex === i)!;
     const f = byId[pick.id];
@@ -314,6 +316,7 @@ export function RiverfolkAuctionMode() {
       </p>
       <h2>Before You Begin</h2>
       <SetupChecklist variant="standard" />
+      <HirelingSetup storageKey="auction" finalFactionIds={finalFactionIds} />
       <div className="btn-row">
         <button className="btn secondary" onClick={() => dispatch({ type: "UNDO" })}>
           Undo last pick

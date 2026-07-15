@@ -13,6 +13,7 @@ import { OrderList, type OrderItem } from "../components/OrderList";
 import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
+import { HirelingSetup } from "../components/HirelingSetup";
 
 interface PoolSlot {
   faction: Faction;
@@ -207,6 +208,9 @@ export function DraftMode() {
 
   // done
   const leftover = state.pool.find((s) => !s.takenBy);
+  const finalFactionIds = new Set(
+    state.seats.map((_, i) => state.pool[state.picks.find((p) => p.seatIndex === i)!.poolIndex].faction.id),
+  );
   const summaryItems: SummaryItem[] = state.seats.map((name, i) => {
     const pick = state.picks.find((p) => p.seatIndex === i)!;
     const f = state.pool[pick.poolIndex].faction;
@@ -236,6 +240,7 @@ export function DraftMode() {
       <SummaryList items={summaryItems} />
       <h2>Before You Begin</h2>
       <SetupChecklist variant="advanced" />
+      <HirelingSetup storageKey="draft" finalFactionIds={finalFactionIds} />
       <div className="btn-row">
         <button className="btn secondary" onClick={() => dispatch({ type: "UNDO" })}>
           Undo last pick

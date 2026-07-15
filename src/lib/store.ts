@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { DEFAULT_OWNED_IDS } from "../data/factions";
+import { DEFAULT_OWNED_HIRELING_IDS } from "../data/hirelings";
 import { MAX_RAFFLE_TICKETS, MIN_RAFFLE_TICKETS } from "./raffle";
 import type { ModeId, Tier } from "../types";
 
@@ -80,6 +81,29 @@ export function usePersistedSet(
 
 export function useOwnedFactionIds(): [Set<string>, (v: Set<string>) => void] {
   return usePersistedSet("rootpicker.ownedFactionIds", DEFAULT_OWNED_IDS);
+}
+
+export function useOwnedHirelingIds(): [Set<string>, (v: Set<string>) => void] {
+  return usePersistedSet("rootpicker.ownedHirelingIds", DEFAULT_OWNED_HIRELING_IDS);
+}
+
+export interface StoredHirelingPick {
+  id: string;
+  demoted: boolean;
+}
+
+export interface StoredHirelingDraw {
+  /** identifies the inputs this draw was made from — a mismatch means the
+      table's picks (or owned packs) changed since, so the draw is stale. */
+  fingerprint: string;
+  picks: StoredHirelingPick[];
+  eligibleCount: number;
+}
+
+/** One draw per mode ("simple", "draft", "raffle", etc.) — a distinct key per
+    caller, so finishing one mode never clobbers another's in-progress draw. */
+export function useHirelingDraw(modeKey: string): [StoredHirelingDraw | null, (v: StoredHirelingDraw | null) => void] {
+  return useLocalStorage<StoredHirelingDraw | null>(`rootpicker.hirelings.${modeKey}`, null);
 }
 
 export function useWishCount(): [number, (v: number) => void] {

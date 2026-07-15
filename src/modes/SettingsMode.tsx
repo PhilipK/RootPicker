@@ -1,4 +1,5 @@
 import { DEFAULT_OWNED_IDS, FACTIONS } from "../data/factions";
+import { DEFAULT_OWNED_HIRELING_IDS, HIRELINGS, HIRELING_PACKS, type HirelingPackId } from "../data/hirelings";
 import { useAppContext } from "../context/AppContext";
 import { MAX_RAFFLE_TICKETS, MIN_RAFFLE_TICKETS } from "../lib/raffle";
 import { FactionCard } from "../components/FactionCard";
@@ -15,6 +16,8 @@ export function SettingsMode() {
     resetRaffleTicketCount,
     ownedIds,
     setOwnedIds,
+    ownedHirelingIds,
+    setOwnedHirelingIds,
   } = useAppContext();
 
   const toggleOwned = (id: string) => {
@@ -22,6 +25,21 @@ export function SettingsMode() {
     if (next.has(id)) next.delete(id);
     else next.add(id);
     setOwnedIds(next);
+  };
+
+  const toggleHireling = (id: string) => {
+    const next = new Set(ownedHirelingIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setOwnedHirelingIds(next);
+  };
+
+  const toggleHirelingPack = (packId: HirelingPackId) => {
+    const ids = HIRELINGS.filter((h) => h.pack === packId).map((h) => h.id);
+    const allOwned = ids.every((id) => ownedHirelingIds.has(id));
+    const next = new Set(ownedHirelingIds);
+    ids.forEach((id) => (allOwned ? next.delete(id) : next.add(id)));
+    setOwnedHirelingIds(next);
   };
 
   return (
@@ -114,6 +132,45 @@ export function SettingsMode() {
           );
         })}
       </div>
+
+      <h2>Hireling Packs</h2>
+      <p className="note">
+        Which hirelings you own — the "Add Hirelings" step after any faction pick (Law A.6) deals only from what’s
+        checked here. Tap a pack name to toggle it whole, or a single card if you're missing just one.
+      </p>
+      <div className="btn-row">
+        <button className="btn secondary" onClick={() => setOwnedHirelingIds(new Set(DEFAULT_OWNED_HIRELING_IDS))}>
+          Select all
+        </button>
+        <button className="btn secondary" onClick={() => setOwnedHirelingIds(new Set())}>
+          Select none
+        </button>
+      </div>
+      {HIRELING_PACKS.map((pack) => {
+        const inPack = HIRELINGS.filter((h) => h.pack === pack.id);
+        const ownedCount = inPack.filter((h) => ownedHirelingIds.has(h.id)).length;
+        return (
+          <div className="hireling-pack" key={pack.id}>
+            <button
+              className="hireling-pack-head"
+              aria-pressed={ownedCount === inPack.length}
+              onClick={() => toggleHirelingPack(pack.id)}
+            >
+              {pack.label} <span className="note">({ownedCount}/{inPack.length})</span>
+            </button>
+            <div className="hireling-chip-row">
+              {inPack.map((h) => {
+                const has = ownedHirelingIds.has(h.id);
+                return (
+                  <button key={h.id} className="hireling-chip" aria-pressed={has} onClick={() => toggleHireling(h.id)}>
+                    {h.promoted} / {h.demoted}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
     </section>
   );
 }

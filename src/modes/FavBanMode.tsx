@@ -27,6 +27,7 @@ import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
+import { HirelingSetup } from "../components/HirelingSetup";
 
 interface FavModeState {
   phase: "setup" | "pass" | "choose" | "reveal" | "assign-pass" | "assign-choose" | "assign-reveal" | "done";
@@ -460,6 +461,7 @@ export function FavBanMode() {
   // done
   const total = state.assigned.reduce((s, a) => s + byId[a.id].reach, 0);
   const rec = REACH_TARGET[playerCount];
+  const finalFactionIds = new Set(state.assigned.map((a) => a.id));
   const summaryItems: SummaryItem[] = state.seats.map((name, i) => {
     const a = state.assigned.find((x) => x.seatIndex === i)!;
     const f = byId[a.id];
@@ -491,6 +493,7 @@ export function FavBanMode() {
       <SummaryList items={summaryItems} />
       <h2>Before You Begin</h2>
       <SetupChecklist variant="standard" />
+      <HirelingSetup storageKey="fav" finalFactionIds={finalFactionIds} />
       <div className="btn-row">
         <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>New game</ConfirmResetButton>
       </div>

@@ -4,6 +4,7 @@ import { availableFactions as computeAvailableFactions, effTarget as computeEffT
 import {
   useAdventurous,
   useOwnedFactionIds,
+  useOwnedHirelingIds,
   usePlayerCount,
   usePlayerNames,
   useRaffleTicketCountOverride,
@@ -21,6 +22,8 @@ interface AppContextValue {
   ownedIds: Set<string>;
   setOwnedIds: (v: Set<string>) => void;
   availableFactions: Faction[];
+  ownedHirelingIds: Set<string>;
+  setOwnedHirelingIds: (v: Set<string>) => void;
   wishCount: number;
   setWishCount: (n: number) => void;
   adventurous: boolean;
@@ -45,6 +48,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [playerCount, setPlayerCount] = usePlayerCount();
   const [names, setNames] = usePlayerNames();
   const [ownedIds, setOwnedIds] = useOwnedFactionIds();
+  const [ownedHirelingIds, setOwnedHirelingIds] = useOwnedHirelingIds();
   const [wishCount, setWishCount] = useWishCount();
   const [adventurous, setAdventurous] = useAdventurous();
   const [viewMode, setViewMode] = useViewMode();
@@ -67,6 +71,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ownedIds,
     setOwnedIds,
     availableFactions,
+    ownedHirelingIds,
+    setOwnedHirelingIds,
     wishCount,
     setWishCount,
     adventurous,

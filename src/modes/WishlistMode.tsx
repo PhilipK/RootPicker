@@ -100,7 +100,8 @@ export function WishlistMode() {
           Everyone secretly ranks their top <b>{wishCount}</b> factions, best to worst. The app then checks every
           reach-safe combination of factions and picks whichever assignment makes the table happiest overall
           (points double with each better rank — <span>{pointsNote}</span>) — nobody sees the others’ picks until
-          the reveal. If someone ends up with none of their <span>{wishCount}</span> picks, the reveal suggests
+          the reveal. Ties go first to setups where fewer players leave empty-handed, then to a fair random
+          draw. If someone ends up with none of their <span>{wishCount}</span> picks, the reveal suggests
           giving them a +1 VP head start — a house rule, not from the Law, so use it or skip it as you like.
           Adjust how many picks each player gets in Settings.
         </Explainer>
@@ -190,6 +191,7 @@ export function WishlistMode() {
   const { assign, score, total } = state.result!;
   const rec = REACH_TARGET[playerCount];
   const maxScore = state.seats.length * wishPoints(0, wishCount);
+  const offListCount = state.seats.filter((p, i) => !p.picks.includes(assign[i])).length;
   const finalFactionIds = new Set(assign);
   const summaryItems: SummaryItem[] = state.seats.map((p, i) => {
     const id = assign[i];
@@ -219,6 +221,13 @@ export function WishlistMode() {
         </>
       } />
       <SummaryList items={summaryItems} />
+      {offListCount > 0 && (
+        <p className="note">
+          {offListCount === 1 ? "One player had to end up off their list" : `${offListCount} players had to end up off their lists`}
+          : with these wishlists, any setup giving everyone a pick would have scored lower overall. Who drew the
+          short straw and which faction fills the gap were random draws among the equally happy, reach-safe setups.
+        </p>
+      )}
       <h2>Before You Begin</h2>
       <SetupChecklist variant="standard" />
       <HirelingSetup storageKey="wish" finalFactionIds={finalFactionIds} />

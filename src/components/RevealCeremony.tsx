@@ -19,6 +19,10 @@ export interface RevealSeatItem {
  * randomness. Face-down cards flip seat by seat under falling autumn leaves;
  * tap anywhere to hurry a flip, skip the whole thing, or replay it later.
  *
+ * The seat-by-seat reveal itself runs for everyone — prefers-reduced-motion
+ * only strips the decorative motion in CSS (falling leaves, the 3D turn, the
+ * glow), turning each flip into an instant swap.
+ *
  * A signature of the result is persisted on dismissal, so a page reload on the
  * done screen doesn't re-run the theatre — only a genuinely new result does.
  */
@@ -26,7 +30,7 @@ export function RevealCeremony({ storageKey, items }: { storageKey: string; item
   const signature = useMemo(() => JSON.stringify(items.map((s) => [s.name, s.faction.id, !!s.first])), [items]);
   const [seenSig, setSeenSig] = useLocalStorage<string | null>(`rootpicker.reveal.${storageKey}`, null);
   const [open, setOpen] = useState(() => seenSig !== signature);
-  const [flipped, setFlipped] = useState(() => (prefersReducedMotion() ? items.length : 0));
+  const [flipped, setFlipped] = useState(0);
   const allFlipped = flipped >= items.length;
   const continueRef = useRef<HTMLButtonElement>(null);
 
@@ -57,7 +61,7 @@ export function RevealCeremony({ storageKey, items }: { storageKey: string; item
           type="button"
           className="link-btn"
           onClick={() => {
-            setFlipped(prefersReducedMotion() ? items.length : 0);
+            setFlipped(0);
             setOpen(true);
           }}
         >
@@ -151,14 +155,6 @@ export function RevealCeremony({ storageKey, items }: { storageKey: string; item
       </div>
     </div>
   );
-}
-
-function prefersReducedMotion(): boolean {
-  try {
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  } catch {
-    return false;
-  }
 }
 
 /* Autumn palette off the app's own faction colors — the falling leaves. */

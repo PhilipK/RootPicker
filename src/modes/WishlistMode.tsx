@@ -15,6 +15,7 @@ import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
+import { FloatingConfirm } from "../components/FloatingConfirm";
 import { RevealCeremony, type RevealSeatItem } from "../components/RevealCeremony";
 import { HirelingSetup } from "../components/HirelingSetup";
 import { VagabondCharacterSetup } from "../components/VagabondCharacterSetup";
@@ -156,6 +157,11 @@ export function WishlistMode() {
           <div className="picker-banner">
             <b>{player.name}</b> — tap {wishCount} factions in the order you want them, best to worst.
           </div>
+          {state.error && (
+            <p className="note" style={{ color: "var(--danger)" }}>
+              {state.error}
+            </p>
+          )}
           <GridLegend />
           <div className="grid">
             {availableFactions
@@ -174,14 +180,14 @@ export function WishlistMode() {
                 );
               })}
           </div>
-          <div className="btn-row">
-            <button className="btn" disabled={player.picks.length !== wishCount} onClick={handleConfirm}>
-              {player.picks.length === wishCount ? `Lock in my top ${wishCount}` : `Pick ${wishCount - player.picks.length} more`}
+          <FloatingConfirm
+            ready={player.picks.length === wishCount}
+            hint={`Pick ${wishCount - player.picks.length} more — best to worst`}
+          >
+            <button className="btn" onClick={handleConfirm}>
+              Lock in my top {wishCount}
             </button>
-          </div>
-          <p className="note" style={{ color: "var(--danger)" }}>
-            {state.error}
-          </p>
+          </FloatingConfirm>
         </section>
       </PassDeviceGate>
     );

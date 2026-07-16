@@ -387,6 +387,21 @@ input[type="text"] {
 .captain-reveal img { aspect-ratio: 1152 / 1570; }
 .captain-reveal li.excluded img { opacity: .35; }
 .captain-reveal .view-card-link { display: block; text-align: center; padding: 5px; font-size: .78rem; }
+@media (prefers-reduced-motion: no-preference) {
+  /* dealt cards turn face-up one after another; the lists remount on redraw
+     (keyed by the drawn ids) so a fresh deal re-runs the flip */
+  .hireling-reveal li, .character-reveal li, .captain-reveal li {
+    animation: cardDealIn .55s cubic-bezier(.25, .8, .3, 1.1) both;
+  }
+  .hireling-reveal li:nth-child(2), .character-reveal li:nth-child(2), .captain-reveal li:nth-child(2) { animation-delay: .14s; }
+  .hireling-reveal li:nth-child(3), .character-reveal li:nth-child(3), .captain-reveal li:nth-child(3) { animation-delay: .28s; }
+  .hireling-reveal li:nth-child(4), .character-reveal li:nth-child(4), .captain-reveal li:nth-child(4) { animation-delay: .42s; }
+  @keyframes cardDealIn {
+    from { opacity: 0; transform: perspective(700px) rotateY(70deg) translateY(10px); }
+    60% { opacity: 1; }
+    to { opacity: 1; transform: perspective(700px) rotateY(0) translateY(0); }
+  }
+}
 
 .demoted-badge {
   position: absolute; top: 8px; left: 8px;
@@ -496,6 +511,29 @@ body.list-view .taken-by { font-size: .68rem; padding: 2px 4px; }
 }
 @media (max-width: 480px) {
   .setup-hero img { width: 34px; height: 34px; }
+}
+
+/* ---------- floating confirm (secret-pick screens) ---------- */
+.floating-confirm {
+  position: fixed; left: 0; right: 0; z-index: 20;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  display: flex; justify-content: center; padding: 0 14px;
+  pointer-events: none;
+}
+.floating-confirm-actions, .floating-confirm-hint { pointer-events: auto; }
+.floating-confirm-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.floating-confirm-actions .btn { border-radius: 999px; padding: 11px 26px; box-shadow: 0 6px 18px rgba(58,46,28,.45); }
+.floating-confirm-hint {
+  margin: 0; padding: 8px 18px;
+  background: var(--paper); color: var(--ink-soft);
+  border: 1px solid var(--ink-soft); border-radius: 999px;
+  font-size: .9rem; font-style: italic;
+  box-shadow: 0 4px 14px rgba(58,46,28,.3);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .floating-confirm-actions { animation: floatConfirmIn .4s cubic-bezier(.2, .9, .3, 1.25) both; }
+  .floating-confirm-hint { animation: floatConfirmIn .3s ease-out both; }
+  @keyframes floatConfirmIn { from { opacity: 0; transform: translateY(64px); } to { opacity: 1; transform: none; } }
 }
 
 /* ---------- reveal ceremony (the woodland chooses) ---------- */

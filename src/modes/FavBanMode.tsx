@@ -27,6 +27,7 @@ import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
+import { FloatingConfirm } from "../components/FloatingConfirm";
 import { RevealCeremony, type RevealSeatItem } from "../components/RevealCeremony";
 import { HirelingSetup } from "../components/HirelingSetup";
 import { VagabondCharacterSetup } from "../components/VagabondCharacterSetup";
@@ -345,19 +346,18 @@ export function FavBanMode() {
               );
             })}
           </div>
-          <div className="btn-row">
-            <button
-              className="btn"
-              disabled={!state.pickId}
-              onClick={() => dispatch({ type: "CONFIRM", playerCount, target: effTarget })}
-            >
+          <FloatingConfirm
+            ready={!!state.pickId}
+            hint={state.pickKind === "fav" ? "Tap the faction you want to keep" : "Tap the faction you want to ban"}
+          >
+            <button className="btn" onClick={() => dispatch({ type: "CONFIRM", playerCount, target: effTarget })}>
               {state.pickId
                 ? state.pickKind === "fav"
                   ? `Lock in ♥ ${byId[state.pickId].name}`
                   : `Lock in ✖ ban ${byId[state.pickId].name}`
                 : "Lock in"}
             </button>
-          </div>
+          </FloatingConfirm>
         </section>
       </PassDeviceGate>
     );
@@ -428,11 +428,11 @@ export function FavBanMode() {
               );
             })}
           </div>
-          <div className="btn-row">
-            <button className="btn" disabled={!state.assignPickId} onClick={() => dispatch({ type: "ASSIGN_CONFIRM" })}>
+          <FloatingConfirm ready={!!state.assignPickId} hint="Tap a faction from what survives">
+            <button className="btn" onClick={() => dispatch({ type: "ASSIGN_CONFIRM" })}>
               {state.assignPickId ? `Pick ${byId[state.assignPickId].name}` : "Pick"}
             </button>
-          </div>
+          </FloatingConfirm>
         </section>
       </PassDeviceGate>
     );

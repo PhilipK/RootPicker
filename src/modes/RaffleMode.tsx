@@ -16,6 +16,7 @@ import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
+import { FloatingConfirm } from "../components/FloatingConfirm";
 import { RevealCeremony, type RevealSeatItem } from "../components/RevealCeremony";
 import { HirelingSetup } from "../components/HirelingSetup";
 import { VagabondCharacterSetup } from "../components/VagabondCharacterSetup";
@@ -293,18 +294,14 @@ export function RaffleMode() {
               );
             })}
           </div>
-          <div className="btn-row">
-            <button
-              className="btn secondary"
-              disabled={!list.length}
-              onClick={() => dispatch({ type: "REMOVE_LAST_TICKET" })}
-            >
+          <FloatingConfirm ready={list.length > 0} hint="Place at least one ticket">
+            <button className="btn secondary" onClick={() => dispatch({ type: "REMOVE_LAST_TICKET" })}>
               Remove last ticket
             </button>
-            <button className="btn" disabled={!list.length} onClick={handleConfirm}>
-              {list.length ? `Drop my ${list.length} ticket${list.length === 1 ? "" : "s"} in the urn` : "Place at least one ticket"}
+            <button className="btn" onClick={handleConfirm}>
+              Drop my {list.length} ticket{list.length === 1 ? "" : "s"} in the urn
             </button>
-          </div>
+          </FloatingConfirm>
         </section>
       </PassDeviceGate>
     );

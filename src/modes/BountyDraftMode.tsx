@@ -284,7 +284,18 @@ export function BountyDraftMode() {
               {forced ? " — out of tokens, must claim" : ""}.
             </div>
             <div className="grid">
-              <FactionCard faction={faction} reachBadge cornerTag />
+              {/* key remounts on each fresh reveal so the card flips in */}
+              <div className="bounty-flip" key={faction.id}>
+                <FactionCard faction={faction} reachBadge cornerTag />
+              </div>
+            </div>
+            <div className="bounty-pile" role="img" aria-label={`${state.bounty} VP bounty on offer`}>
+              {Array.from({ length: Math.min(state.bounty, 15) }, (_, i) => (
+                <span key={i} className="bounty-coin" />
+              ))}
+              <span className="bounty-pile-label">
+                {state.bounty ? `${state.bounty} VP bounty on it` : "no bounty on it yet"}
+              </span>
             </div>
             <div className="btn-row">
               <button className="btn" onClick={() => dispatch({ type: "CLAIM", pool: availableFactions, target: effTarget })}>

@@ -11,6 +11,8 @@ export interface Faction {
   /** shares art/id with another faction (Second Vagabond reuses "vagabond") */
   img?: string;
   dealNote?: string;
+  /** one-line battle cry shown on the reveal ceremony card */
+  flavor?: string;
 }
 
 export type ModeId =

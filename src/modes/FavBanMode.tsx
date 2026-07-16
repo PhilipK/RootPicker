@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useAppContext } from "../context/AppContext";
 import { shuffleArr } from "../lib/shuffle";
 import {
@@ -166,7 +166,7 @@ function renderLogEntry(entry: FavLogEntry, seats: string[]): ReactNode {
         </>
       );
     case "ban-applied":
-      return <>✖ {name(entry.by)} banned {fname(entry.id)}.</>;
+      return <>{name(entry.by)} banned {fname(entry.id)}.</>;
     case "fav-void-banned":
       return (
         <>
@@ -208,15 +208,28 @@ function renderLogEntry(entry: FavLogEntry, seats: string[]): ReactNode {
         </>
       );
     case "fav-applied":
-      return <>♥ {name(entry.by)} plays {fname(entry.id)}.</>;
+      return <>{name(entry.by)} plays {fname(entry.id)}.</>;
     case "assign-applied":
-      return <>🎯 {name(entry.by)} picks {fname(entry.id)}.</>;
+      return <>{name(entry.by)} picks {fname(entry.id)}.</>;
     case "half-removed":
       return (
         <>
           {fname(entry.id)} leaves the pool — never in the same game as {fname(entry.causeId)} (A.8.1).
         </>
       );
+  }
+}
+
+/** The glyph stamped onto a reveal-log line: ♥ locked, ✖ banned/removed, ⚡ voided, 🎯 picked. */
+function logStamp(entry: FavLogEntry): string {
+  if (entry.type === "assign-applied") return "🎯";
+  switch (entry.cls) {
+    case "fav-line":
+      return "♥";
+    case "ban-line":
+      return "✖";
+    case "void-line":
+      return "⚡";
   }
 }
 
@@ -367,9 +380,12 @@ export function FavBanMode() {
     return (
       <section>
         <h2>{state.round === 1 ? "The Reveal" : `The Reveal — round ${state.round}`}</h2>
-        <ul className="reveal-log">
+        <ul className="reveal-log dramatic">
           {state.log.map((entry, i) => (
-            <li key={i} className={entry.cls}>
+            <li key={i} className={entry.cls} style={{ "--i": i } as CSSProperties}>
+              <span className="log-stamp" aria-hidden="true">
+                {logStamp(entry)}
+              </span>
               {renderLogEntry(entry, state.seats)}
             </li>
           ))}
@@ -442,9 +458,12 @@ export function FavBanMode() {
     return (
       <section>
         <h2>Picked</h2>
-        <ul className="reveal-log">
+        <ul className="reveal-log dramatic">
           {state.log.map((entry, i) => (
-            <li key={i} className={entry.cls}>
+            <li key={i} className={entry.cls} style={{ "--i": i } as CSSProperties}>
+              <span className="log-stamp" aria-hidden="true">
+                {logStamp(entry)}
+              </span>
               {renderLogEntry(entry, state.seats)}
             </li>
           ))}

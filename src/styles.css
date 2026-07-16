@@ -498,6 +498,104 @@ body.list-view .taken-by { font-size: .68rem; padding: 2px 4px; }
   .setup-hero img { width: 34px; height: 34px; }
 }
 
+/* ---------- reveal ceremony (the woodland chooses) ---------- */
+body.ceremony-open { overflow: hidden; }
+.ceremony {
+  position: fixed; inset: 0; z-index: 60; overflow-y: auto;
+  background-color: #2e3a20;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse at 50% -20%, #57683b 0%, #39462a 45%, #232c1a 100%);
+  background-blend-mode: overlay, normal;
+  color: var(--paper);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px 14px;
+}
+.ceremony-inner { max-width: 880px; width: 100%; margin: auto; text-align: center; position: relative; }
+.ceremony-kicker { margin: 0 0 4px; font-style: italic; font-size: .95rem; color: rgba(244,235,210,.72); }
+.ceremony-title {
+  margin: 0 0 22px; font-variant: small-caps; letter-spacing: .1em; font-weight: 700;
+  font-size: clamp(1.5rem, 5vw, 2.2rem); text-shadow: 0 2px 10px rgba(0,0,0,.45);
+}
+.ceremony-title.done { color: var(--gold); }
+
+.ceremony-cards {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 175px));
+  gap: 14px; justify-content: center;
+}
+@media (max-width: 480px) {
+  .ceremony-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+}
+.ceremony-card { perspective: 1000px; }
+.ceremony-card-inner { position: relative; width: 100%; aspect-ratio: 5 / 7; transform-style: preserve-3d; }
+.ceremony-card.flipped .ceremony-card-inner { transform: rotateY(180deg); }
+.ceremony-face {
+  position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  border: 2px solid var(--ink); border-radius: 12px; overflow: hidden;
+  box-shadow: 0 8px 22px rgba(0,0,0,.45);
+}
+.ceremony-back {
+  background: var(--paper-deep);
+  background-image: repeating-linear-gradient(45deg, rgba(58,46,28,.07) 0 8px, transparent 8px 16px);
+  color: var(--ink-soft);
+  display: flex; align-items: center; justify-content: center;
+}
+.ceremony-back svg { width: 55%; height: auto; opacity: .85; }
+.ceremony-front {
+  transform: rotateY(180deg);
+  background: var(--paper); color: var(--ink);
+  display: flex; flex-direction: column;
+}
+.ceremony-card.militant .ceremony-front { border-color: var(--militant); }
+.ceremony-card.insurgent .ceremony-front { border-color: var(--insurgent); }
+.ceremony-player {
+  margin: 0; padding: 6px 8px; font-variant: small-caps; letter-spacing: .05em; font-weight: 700;
+  font-size: .95rem; background: var(--ink); color: var(--paper);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ceremony-card.first .ceremony-player { background: var(--gold); color: var(--ink); }
+.ceremony-front img { display: block; width: 100%; flex: 1 1 auto; min-height: 0; object-fit: contain; padding: 6px 6px 0; }
+.ceremony-faction { margin: 4px 0 0; padding: 0 8px; font-variant: small-caps; font-weight: 700; font-size: .92rem; line-height: 1.15; }
+.ceremony-note { margin: 2px 0 10px; padding: 0 8px; font-size: .74rem; font-style: italic; color: var(--ink-soft); }
+.ceremony-first-tag {
+  margin: -6px 0 8px; font-size: .7rem; font-variant: small-caps; letter-spacing: .08em;
+  font-weight: 700; color: var(--gold);
+}
+
+.ceremony-actions { margin: 24px 0 6px; min-height: 46px; }
+.ceremony-skip { color: rgba(244,235,210,.8); border-color: rgba(244,235,210,.5); }
+.ceremony-skip:hover { color: var(--paper); border-color: var(--paper); }
+.ceremony-continue { background: var(--gold); border-color: var(--gold); color: var(--ink); font-size: 1.1rem; padding: 11px 26px; }
+.ceremony-replay-row { margin: 4px 0 10px; }
+
+.ceremony-leaves { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+.ceremony-leaf { position: absolute; top: -40px; left: var(--x); width: var(--sz); height: var(--sz); opacity: .85; }
+.ceremony-leaf svg { display: block; width: 100%; height: 100%; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ceremony-card-inner { transition: transform .8s cubic-bezier(.3, .7, .25, 1.05); }
+  .ceremony-card { animation: ceremonyDeal .55s ease-out both; animation-delay: calc(var(--i) * 110ms); }
+  @keyframes ceremonyDeal { from { opacity: 0; transform: translateY(26px) scale(.92); } to { opacity: 1; transform: none; } }
+  .ceremony-card.flipped .ceremony-front { animation: ceremonyGlow 1.1s ease-out .3s backwards; }
+  @keyframes ceremonyGlow {
+    0% { box-shadow: 0 0 0 rgba(176,141,46,0); }
+    35% { box-shadow: 0 0 34px rgba(176,141,46,.85); }
+    100% { box-shadow: 0 8px 22px rgba(0,0,0,.45); }
+  }
+  .ceremony-title.done { animation: ceremonyStamp .35s ease-out both; }
+  @keyframes ceremonyStamp { from { transform: scale(1.7) rotate(-2deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
+  .ceremony-continue { animation: ceremonyRise .3s ease-out .15s backwards; }
+  @keyframes ceremonyRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  /* leaves only ever move for motion-friendly users; otherwise they stay parked offscreen */
+  .ceremony-leaf { animation: ceremonyFall var(--dur) linear var(--delay) infinite; }
+  @keyframes ceremonyFall { to { transform: translateY(calc(100vh + 80px)); } }
+  .ceremony-leaf svg { animation: ceremonySway var(--sway-dur) ease-in-out infinite alternate; }
+  @keyframes ceremonySway {
+    from { transform: translateX(calc(var(--sway) * -1)) rotate(-42deg); }
+    to { transform: translateX(var(--sway)) rotate(48deg); }
+  }
+}
+
 /* ---------- pass-the-device interstitial ---------- */
 .pass-gate {
   position: fixed; inset: 0; z-index: 50;

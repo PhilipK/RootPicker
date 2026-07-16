@@ -16,6 +16,7 @@ import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
+import { RevealCeremony, type RevealSeatItem } from "../components/RevealCeremony";
 import { HirelingSetup } from "../components/HirelingSetup";
 import { VagabondCharacterSetup } from "../components/VagabondCharacterSetup";
 import { KnaveCaptainSetup } from "../components/KnaveCaptainSetup";
@@ -372,9 +373,19 @@ export function RaffleMode() {
       sub: `${via.type === "won" ? "won by ticket" : "random fill"} · tickets: ${spread} · reach ${f.reach} · ${f.type}`,
     };
   });
+  const revealItems: RevealSeatItem[] = state.seats.map((name, i) => {
+    const via = state.events.find((e) => (e.type === "won" || e.type === "fill") && e.seatIndex === i)!;
+    return {
+      name,
+      faction: byId[state.assign[i]!],
+      first: i === state.firstSeat,
+      note: via.type === "won" ? "won by ticket" : "from the leftovers",
+    };
+  });
 
   return (
     <section>
+      <RevealCeremony storageKey="raffle" items={revealItems} />
       <h2>The Woodland is Set</h2>
       <ReachStampLine total={total} recommended={rec} />
       <SummaryList items={summaryItems} />

@@ -15,6 +15,7 @@ import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
+import { RevealCeremony, type RevealSeatItem } from "../components/RevealCeremony";
 import { HirelingSetup } from "../components/HirelingSetup";
 import { VagabondCharacterSetup } from "../components/VagabondCharacterSetup";
 import { KnaveCaptainSetup } from "../components/KnaveCaptainSetup";
@@ -209,9 +210,19 @@ export function WishlistMode() {
       sub: `reach ${f.reach} · ${f.type} · wanted: ${wishlistNames}`,
     };
   });
+  const revealItems: RevealSeatItem[] = state.seats.map((p, i) => {
+    const rank = p.picks.indexOf(assign[i]);
+    return {
+      name: p.name,
+      faction: byId[assign[i]],
+      first: i === 0,
+      note: rank >= 0 ? `their ${rankLabel(rank)}` : "not on their list",
+    };
+  });
 
   return (
     <section>
+      <RevealCeremony storageKey="wish" items={revealItems} />
       <h2>The Woodland is Set</h2>
       <ReachStampLine total={total} recommended={rec} extra={
         <>

@@ -27,6 +27,7 @@ import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
+import { RevealCeremony, type RevealSeatItem } from "../components/RevealCeremony";
 import { HirelingSetup } from "../components/HirelingSetup";
 import { VagabondCharacterSetup } from "../components/VagabondCharacterSetup";
 import { KnaveCaptainSetup } from "../components/KnaveCaptainSetup";
@@ -487,9 +488,19 @@ export function FavBanMode() {
       faded: true,
     });
   }
+  const revealItems: RevealSeatItem[] = state.seats.map((name, i) => {
+    const a = state.assigned.find((x) => x.seatIndex === i)!;
+    return {
+      name,
+      faction: byId[a.id],
+      first: i === 0,
+      note: a.via === "fav" ? "locked as favorite" : "picked from the survivors",
+    };
+  });
 
   return (
     <section>
+      <RevealCeremony storageKey="fav" items={revealItems} />
       <h2>The Woodland is Set</h2>
       <ReachStampLine total={total} recommended={rec} />
       <SummaryList items={summaryItems} />

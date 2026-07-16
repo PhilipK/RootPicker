@@ -146,6 +146,38 @@ function raffleReducer(state: RaffleState, action: RaffleAction): RaffleState {
   }
 }
 
+/** The raffle urn, in the app's ink-stroke style: an amphora with tickets poking out. */
+function UrnSvg() {
+  return (
+    <svg
+      viewBox="0 0 64 64"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {/* tickets sticking out of the mouth */}
+      <rect x="23.5" y="4.5" width="7.5" height="11" rx="1" transform="rotate(-16 27.3 10)" />
+      <rect x="33" y="3.5" width="7.5" height="11" rx="1" transform="rotate(12 36.8 9)" />
+      {/* rim and lip */}
+      <path d="M21 15.5h22" />
+      <path d="M21 15.5c0 2.2 4.9 4 11 4s11-1.8 11-4" />
+      {/* body: narrow neck flaring into round shoulders */}
+      <path d="M23.5 19c.5 3.5-9.5 6-9.5 13.5C14 42.5 22 50 32 50s18-7.5 18-17.5c0-7.5-10-10-9.5-13.5" />
+      {/* handles: loops from the neck down onto the shoulders */}
+      <path d="M17 23.5c-6.5 1.5-8 8.5-2 11" />
+      <path d="M47 23.5c6.5 1.5 8 8.5 2 11" />
+      {/* foot */}
+      <path d="M27.5 50l-2.5 6.5h14L36.5 50" />
+      {/* base bands */}
+      <path d="M21.5 42.5c3 1.5 6.6 2.3 10.5 2.3s7.5-.8 10.5-2.3" strokeWidth={1.3} />
+      <path d="M23.5 45.6c2.4 1.1 5.3 1.7 8.5 1.7s6.1-.6 8.5-1.7" strokeWidth={1.3} />
+    </svg>
+  );
+}
+
 function eventLine(ev: RaffleEvent, seats: string[], firstSeat: number): { cls: string; text: string } {
   const name = seats[ev.seatIndex];
   const faction = byId[ev.id].name;
@@ -321,20 +353,28 @@ export function RaffleMode() {
     });
 
   if (state.phase === "draw") {
+    const remaining = state.urn.length - state.drawn;
     return (
       <section>
         <h2>The Urn</h2>
         <OrderList items={orderItems} />
-        <div className="picker-banner">
-          Ticket <b>{state.drawn}</b> of <b>{state.urn.length}</b> drawn.
-        </div>
-        <div className="btn-row">
+        <div className="urn-stage">
           <button
-            className="btn"
+            type="button"
+            className="urn-button"
+            aria-label="Draw a ticket"
             onClick={() => dispatch({ type: "DRAW", count: 1, available: rafflePool, target: effTarget })}
           >
-            Draw a ticket
+            {/* key remounts the wrapper each draw so the shake replays */}
+            <span className="urn-shake" key={state.drawn}>
+              <UrnSvg />
+            </span>
           </button>
+          <p className="urn-caption">
+            Tap the urn to draw — <b>{remaining}</b> live ticket{remaining === 1 ? "" : "s"} inside, {state.drawn} drawn.
+          </p>
+        </div>
+        <div className="btn-row">
           <button
             className="btn secondary"
             onClick={() => dispatch({ type: "DRAW", count: state.urn.length, available: rafflePool, target: effTarget })}
@@ -342,7 +382,7 @@ export function RaffleMode() {
             Draw everything
           </button>
         </div>
-        <ul className="reveal-log">{logItems}</ul>
+        <ul className="reveal-log urn-log">{logItems}</ul>
         <div className="btn-row">
           <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>Start over</ConfirmResetButton>
         </div>

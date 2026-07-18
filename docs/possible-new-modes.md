@@ -366,3 +366,89 @@ Tuning / open questions:
   to draw.
 - Burned tickets are shown live as they're drawn — the drama is the point. If
   that drags at 6 players, a "draw all" exists.
+
+## Mulligan — IMPLEMENTED
+
+Now live as `src/modes/MulliganMode.tsx` (`ModeId: "mulligan"`), gating logic
+in `src/lib/mulligan.ts`. Trading Post's deal, with a much smaller decision:
+keep what you're dealt, or trade it in blind for whatever the market hands
+back.
+
+### Rules
+
+1. Shuffle seats. App deals a random legal lineup (reach ≥ target, A.8.1
+   respected, Second Vagabond excluded) — one secret faction per player,
+   the same construction as Trading Post. Every other owned faction sits in
+   the market.
+2. Device passes around once, seat order. Each player privately sees their
+   dealt faction and chooses: **keep** it, or **mulligan** — discard it back
+   to the market and draw a random replacement from whichever market
+   faction keeps the table's holdings multiset legal. The replacement is
+   binding and shown to that player immediately, before the device moves on
+   — nobody mulligans twice, and nobody is left not knowing what they're
+   playing.
+3. The discarded faction returns to the market: barred from coming back to
+   the player who just gave it up (drawing your own discard back isn't a
+   real mulligan), but fully available to any later player who mulligans.
+4. If no market faction could replace the current holding without breaking
+   reach or the Vagabond/Knaves rule, mulligan is greyed out with the reason
+   attached — keep is the only option left.
+5. Whether each seat kept or mulliganed is announced live as the device
+   passes (the turn tracker marks it), but not what they ended up with —
+   that waits for the reveal at the end, which replays every keep and
+   mulligan in order.
+
+### Why fair
+
+Nobody chooses their replacement, so mulliganing is a pure gamble against
+the market, not a way to trade up into something specific — the same
+"decide blind, live with it" shape as Woodland Raffle's random fill.
+Keeping is the safe move; mulliganing only makes sense if you'd rather take
+the market's chance than your dealt faction, whatever it turns out to be.
+Barring the discarder from drawing their own card straight back closes the
+one loophole that would otherwise make the "decision" meaningless.
+
+### Why legal combinations
+
+The deal starts legal by construction, identical to Trading Post:
+`legalLineups` in `src/lib/mulligan.ts` enumerates every `playerCount`-subset
+of the pool via `combinations` (from `src/lib/wish.ts`) and keeps the ones
+`multisetLegal` (imported straight from `src/lib/trade.ts`, not re-derived)
+accepts — reach ≥ target and never Vagabond + Knaves together (A.8.1). Every
+mulligan is gated the same way: `legalReplacements` swaps a candidate into
+the current holdings multiset and rejects it if `multisetLegal` rejects the
+result, so the table stays legal after every seat's decision, start to
+finish. Militant presence isn't enforced, matching Wishlist and Trading
+Post's subset legality (reach + A.8.1 only).
+
+### Implementation notes
+
+`usePersistedReducer` machine (`setup → pass → decide → seat-reveal → done`,
+looping `pass → decide → (seat-reveal) → pass` once per seat). `decide` and
+`seat-reveal` both render inside the same `PassDeviceGate` call, so a
+mulligan's replacement is shown without a second pass — the device only
+moves on once the seat taps Continue. Randomness (deal, replacement draw) is
+injected from `MulliganMode.tsx` via action payloads (`START` carries the
+dealt lineup and market, `MULLIGAN` carries the already-drawn replacement
+id), so `src/lib/mulligan.ts` stays a pure, deterministic core, unit-tested
+in `src/lib/mulligan.test.ts`. Live decisions surface in the `OrderList`
+`who` column ("kept" / "mulliganed") without leaking identity. The reveal
+replays every seat's outcome in a `.reveal-log` (`void-line` for keeps,
+`fav-line` for mulligans — the same styling Trading Post uses for
+self-loops vs. real trades), then the usual `SummaryList` + `SetupChecklist`
++ `ReachStampLine`. No house-rule tag: nothing touches scoring.
+
+Tuning / open questions:
+- Decisions announced live (kept/mulliganed, never the faction) is the
+  implemented default — it keeps the turn tracker honest without spoiling
+  the reveal. A fully-silent variant (nothing shown until the final reveal,
+  like Woodland Raffle's ticket phase) would work too; skipped for v1 since
+  live status costs nothing and the real drama — what you drew — is still
+  saved for the end.
+- A player who mulligans gets exactly one shot at a replacement; there's no
+  re-mulliganing the redraw itself. Simpler to reason about and keeps the
+  pass a single, bounded round. A "one mulligan token, spend it whenever"
+  variant would be a bigger structural change — not attempted here.
+- No deviations from the brief: deal/market construction mirrors Trading
+  Post exactly, and the legality gate reuses `multisetLegal` rather than
+  duplicating it.

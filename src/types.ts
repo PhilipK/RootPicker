@@ -28,6 +28,7 @@ export type ModeId =
   | "potluck"
   | "trade"
   | "raffle"
+  | "mulligan"
   | "settings";
 
 export type Tier = "new" | "comfortable" | "expert";

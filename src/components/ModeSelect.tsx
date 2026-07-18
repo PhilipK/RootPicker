@@ -165,6 +165,18 @@ function RaffleIcon() {
   );
 }
 
+function MulliganIcon() {
+  // a dealt card with a curved "redo" arrow — trade it in for a new one
+  return (
+    <svg {...strokeProps}>
+      <rect x="4" y="4" width="10.5" height="15" rx="1.4" />
+      <circle cx="9.25" cy="9.5" r="1.15" {...fillDot} />
+      <path d="M15.5 8.5a4.3 4.3 0 1 1-1.1-2.9" />
+      <path d="M15.5 4.6v3h-3" />
+    </svg>
+  );
+}
+
 function GearIcon() {
   return (
     <svg {...strokeProps}>
@@ -275,6 +287,13 @@ export const GAME_MODES: ModeMeta[] = [
     desc: "Spread ten secret tickets across the factions you want, then watch the urn draw winners one ticket at a time.",
     best: "gamblers who'd rather bet on a faction than argue for it",
   },
+  {
+    id: "mulligan",
+    label: "Mulligan",
+    icon: <MulliganIcon />,
+    desc: "Everyone is dealt a secret faction and, one at a time, keeps it or mulligans it for a blind, binding replacement from the market.",
+    best: "tables who want an easy out from a deal they don't like, without letting anyone choose their way into a favorite",
+  },
 ];
 
 export const SETTINGS_META: Pick<ModeMeta, "id" | "label" | "icon"> = {
@@ -293,7 +312,7 @@ export function ModeSelect({ onSelect }: { onSelect: (m: ModeId) => void }) {
   return (
     <section className="mode-select">
       <p className="mode-select-intro">
-        Twelve ways to seat the Woodland. Choose how your table settles on factions.
+        Thirteen ways to seat the Woodland. Choose how your table settles on factions.
       </p>
 
       <ul className="mode-grid">

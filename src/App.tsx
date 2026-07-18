@@ -16,6 +16,7 @@ import { WishlistMode } from "./modes/WishlistMode";
 import { PotluckDraftMode } from "./modes/PotluckDraftMode";
 import { TradingPostMode } from "./modes/TradingPostMode";
 import { RaffleMode } from "./modes/RaffleMode";
+import { SecretSantaMode } from "./modes/SecretSantaMode";
 import { SettingsMode } from "./modes/SettingsMode";
 
 function AppShell() {
@@ -51,6 +52,7 @@ function AppShell() {
             {mode === "potluck" && <PotluckDraftMode />}
             {mode === "trade" && <TradingPostMode />}
             {mode === "raffle" && <RaffleMode />}
+            {mode === "santa" && <SecretSantaMode />}
             {mode === "settings" && <SettingsMode />}
           </>
         )}

@@ -366,3 +366,96 @@ Tuning / open questions:
   to draw.
 - Burned tickets are shown live as they're drawn — the drama is the point. If
   that drags at 6 players, a "draw all" exists.
+
+## Secret Santa — IMPLEMENTED
+
+Now live as `src/modes/SecretSantaMode.tsx` (`ModeId: "santa"`), resolution logic
+in `src/lib/santa.ts`. Everyone gifts, nobody picks their own faction — a
+directed gift chain around the table instead of a shared pool or a deal.
+
+### Rules
+
+1. Shuffle seats. Device passes around once: each player secretly gifts one
+   faction to their left-hand neighbor (seat `i` gifts to seat `(i+1) mod n`).
+   Gifting is ungated — pick anything, even a faction someone else already
+   gifted to their own neighbor. The Second Vagabond sits out of the giftable
+   pool, same precedent as Hand Draft/Raffle/Trading Post's other ungated
+   phases.
+2. Once every gift is locked in, the reveal resolves them in seat order (seat
+   0's incoming gift first, then seat 1's, …). A gift is accepted onto the
+   table if it isn't a duplicate of an already-accepted faction, doesn't pair
+   the Vagabond with the Knaves (A.8.1), and leaves the table still able to
+   reach the target — the same completability guard Simple mode runs per
+   pick (`reachBlockReason`, `src/lib/reach.ts`).
+3. A gift that fails any of those bounces back to its **giver**, not its
+   receiver: the giver open-repicks a legal replacement right there, in full
+   view of the table (not a secret re-pick — the original gift's contents are
+   already public by the time it bounces).
+4. Whoever's gift bounces first becomes first player — compensation for
+   ending up with an arbitrary substitute instead of the gift a friend
+   actually chose for them. If every gift resolves clean, seat 0 opens as
+   usual, the app's standing convention.
+5. Two players always degenerates into a mutual exchange (each gifts to the
+   other's only neighbor). If the two gifts differ it's a clean swap; if both
+   players happen to gift the same faction, the second one to resolve bounces
+   and its giver open-repicks — same mechanism as any other seat, just with
+   nowhere to hide since there are only two of you. The Explainer notes this
+   with a wink instead of blocking it, same precedent as Potluck's forced
+   2-player swap.
+
+### Why fair
+
+Gifting is preference expression aimed at someone else, not yourself: you'll
+never play what you gift, so the honest move is to pick something you think
+your neighbor would enjoy playing (or enjoy you facing), not a dump of your
+least-favorite faction. Ungating the gift phase keeps it purely expressive —
+no one has to think about reach math while choosing a present. All the
+legality bookkeeping happens later, at the reveal, and it lands on the
+*giver* when a gift doesn't work out, not the receiver — you sent it, you fix
+it. The bounce-compensation rule (rule 4) means the one seat that ends up with
+the least personal outcome (an open re-pick instead of a friend's choice)
+gets the turn-order edge to offset it.
+
+### Why legal combinations
+
+`giftAcceptReason` (`src/lib/santa.ts`) is the single gate every gift and
+every re-pick passes through: duplicate check, then `reachBlockReason` for
+the Vagabond/Knaves exclusion and reach completability, exactly mirroring
+Potluck's contribute-phase gating and Raffle's ticket resolution. The
+accepted set only ever grows by way of this gate, so the invariant "still
+legal-completable" holds by induction after every seat resolves — the same
+argument the doc already leans on for Potluck, Raffle, and Riverfolk Auction.
+`legalSurvivors` re-runs the same gate over the full pool to build the
+giver's open re-pick options; it's never empty as long as the invariant held
+going in, since the best-reach remaining faction that isn't a duplicate or a
+Vagabond/Knaves conflict is always exactly the kind of pick the guard was
+designed to keep available. `src/lib/santa.test.ts` stress-tests this with a
+"maximal chaos" run where every player gifts the identical faction, forcing
+a cascade of re-picks, and asserts the final table is still legal (no
+duplicates, no Vagabond+Knaves, reach met) at 3–6 players.
+
+### Implementation notes
+
+`usePersistedReducer` state machine (`setup → pass/gift → reveal/repick →
+done`); no `past`/undo stack, same precedent as Raffle and Trading Post
+(a bounced gift's re-pick isn't really something to undo mid-reveal). UI:
+`PassDeviceGate` for the ungated secret gift phase (mirrors Hand Draft), an
+`OrderList` for both gifting and resolving turn trackers, `FactionCard` grids
+for both the gift pool and the open re-pick options, a `.reveal-log` replay
+of every accepted/bounced/re-picked gift (mirrors Raffle's draw log and
+Trading Post's cycle replay), then the standard `SummaryList` +
+`SetupChecklist` + `ReachStampLine` + `RevealCeremony` close. No house-rule
+tag: nothing here touches scoring, only who ends up with which
+(already-legal) faction.
+
+Deviations from a from-scratch spec, called out for the record:
+- This section didn't have a prior sketch in this doc — it's authored
+  directly as the implemented mechanic (gift-then-resolve, giver re-picks on
+  failure, reveal in seat order), matching the brief that introduced it.
+- "Left neighbor" is modeled as `(seat + 1) mod n`; the app has no fixed
+  clockwise/counterclockwise convention elsewhere, so this is a naming choice,
+  not a rules one — the mechanic is direction-symmetric.
+- First-player compensation (rule 4) isn't in the original brief verbatim;
+  it was added for consistency with every other mode's "Why fair" section,
+  using the same "first to get the short end of an event becomes first
+  player" shape as Raffle's random-fill compensation.

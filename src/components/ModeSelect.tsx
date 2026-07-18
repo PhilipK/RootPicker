@@ -165,6 +165,19 @@ function RaffleIcon() {
   );
 }
 
+function SantaIcon() {
+  // a wrapped gift box with a bow — passed to the neighbor, not kept
+  return (
+    <svg {...strokeProps}>
+      <rect x="4" y="10" width="16" height="10" rx="1.4" />
+      <path d="M4 14h16" />
+      <path d="M12 10v10" />
+      <path d="M12 10c-2.2 0-3.4-1.1-3.4-2.6 0-1.2.9-2 2-2 1.3 0 1.9 1.1 1.4 2.6" />
+      <path d="M12 10c2.2 0 3.4-1.1 3.4-2.6 0-1.2-.9-2-2-2-1.3 0-1.9 1.1-1.4 2.6" />
+    </svg>
+  );
+}
+
 function GearIcon() {
   return (
     <svg {...strokeProps}>
@@ -275,6 +288,13 @@ export const GAME_MODES: ModeMeta[] = [
     desc: "Spread ten secret tickets across the factions you want, then watch the urn draw winners one ticket at a time.",
     best: "gamblers who'd rather bet on a faction than argue for it",
   },
+  {
+    id: "santa",
+    label: "Secret Santa",
+    icon: <SantaIcon />,
+    desc: "Secretly gift a faction to the player on your left, then watch the reveal sort out any conflicts.",
+    best: "tables who want to hand-pick what a friend plays, not just their own",
+  },
 ];
 
 export const SETTINGS_META: Pick<ModeMeta, "id" | "label" | "icon"> = {
@@ -293,7 +313,7 @@ export function ModeSelect({ onSelect }: { onSelect: (m: ModeId) => void }) {
   return (
     <section className="mode-select">
       <p className="mode-select-intro">
-        Twelve ways to seat the Woodland. Choose how your table settles on factions.
+        Thirteen ways to seat the Woodland. Choose how your table settles on factions.
       </p>
 
       <ul className="mode-grid">

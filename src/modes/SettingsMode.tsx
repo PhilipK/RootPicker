@@ -9,6 +9,7 @@ import {
 } from "../data/vagabondCharacters";
 import { useAppContext } from "../context/AppContext";
 import { MAX_RAFFLE_TICKETS, MIN_RAFFLE_TICKETS } from "../lib/raffle";
+import { MAX_DUTCH_RANGE, MAX_DUTCH_TICK_SECONDS, MIN_DUTCH_RANGE, MIN_DUTCH_TICK_SECONDS } from "../lib/dutch";
 import { FactionCard } from "../components/FactionCard";
 import { CardThumb } from "../components/CardThumb";
 
@@ -22,6 +23,10 @@ export function SettingsMode() {
     raffleTicketCountIsAuto,
     setRaffleTicketCount,
     resetRaffleTicketCount,
+    dutchRange,
+    setDutchRange,
+    dutchTickSeconds,
+    setDutchTickSeconds,
     ownedIds,
     setOwnedIds,
     ownedHirelingIds,
@@ -129,6 +134,47 @@ export function SettingsMode() {
           </button>
         </div>
       )}
+
+      <h2>Dutch Flower Auction</h2>
+      <p className="note">
+        How wide the price clock swings and how fast it ticks. The clock always runs from −range to +range VP.
+      </p>
+      <p className="note">Price range (±VP)</p>
+      <div className="stepper">
+        <button
+          aria-label="Narrower range"
+          disabled={dutchRange <= MIN_DUTCH_RANGE}
+          onClick={() => setDutchRange(dutchRange - 1)}
+        >
+          −
+        </button>
+        <span className="count">±{dutchRange}</span>
+        <button
+          aria-label="Wider range"
+          disabled={dutchRange >= MAX_DUTCH_RANGE}
+          onClick={() => setDutchRange(dutchRange + 1)}
+        >
+          +
+        </button>
+      </div>
+      <p className="note">Seconds per tick</p>
+      <div className="stepper">
+        <button
+          aria-label="Faster clock"
+          disabled={dutchTickSeconds <= MIN_DUTCH_TICK_SECONDS}
+          onClick={() => setDutchTickSeconds(Math.round((dutchTickSeconds - 0.5) * 10) / 10)}
+        >
+          −
+        </button>
+        <span className="count">{dutchTickSeconds}s</span>
+        <button
+          aria-label="Slower clock"
+          disabled={dutchTickSeconds >= MAX_DUTCH_TICK_SECONDS}
+          onClick={() => setDutchTickSeconds(Math.round((dutchTickSeconds + 0.5) * 10) / 10)}
+        >
+          +
+        </button>
+      </div>
 
       <h2>Your Collection</h2>
       <p className="note">

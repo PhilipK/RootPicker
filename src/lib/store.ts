@@ -3,6 +3,14 @@ import { DEFAULT_OWNED_IDS } from "../data/factions";
 import { DEFAULT_OWNED_HIRELING_IDS } from "../data/hirelings";
 import { DEFAULT_OWNED_VAGABOND_CHARACTER_IDS } from "../data/vagabondCharacters";
 import { MAX_RAFFLE_TICKETS, MIN_RAFFLE_TICKETS } from "./raffle";
+import {
+  DEFAULT_DUTCH_RANGE,
+  DEFAULT_DUTCH_TICK_SECONDS,
+  MAX_DUTCH_RANGE,
+  MAX_DUTCH_TICK_SECONDS,
+  MIN_DUTCH_RANGE,
+  MIN_DUTCH_TICK_SECONDS,
+} from "./dutch";
 import type { ModeId, Tier } from "../types";
 
 const MODE_IDS: ModeId[] = [
@@ -13,6 +21,7 @@ const MODE_IDS: ModeId[] = [
   "cut",
   "auction",
   "bounty",
+  "dutch",
   "tt",
   "wish",
   "potluck",
@@ -161,6 +170,20 @@ export function useRaffleTicketCountOverride(): [number | null, (v: number | nul
   const [v, setV] = useLocalStorage<number | null>("rootpicker.raffleTicketCount", null);
   const clamp = (n: number) => Math.min(MAX_RAFFLE_TICKETS, Math.max(MIN_RAFFLE_TICKETS, n));
   return [v === null ? null : clamp(v), (n: number | null) => setV(n === null ? null : clamp(n))];
+}
+
+/** Dutch Flower Auction price range: the clock runs from −range to +range VP. */
+export function useDutchRange(): [number, (v: number) => void] {
+  const [v, setV] = useLocalStorage("rootpicker.dutchRange", DEFAULT_DUTCH_RANGE);
+  const clamp = (n: number) => Math.min(MAX_DUTCH_RANGE, Math.max(MIN_DUTCH_RANGE, n));
+  return [clamp(v), (n: number) => setV(clamp(n))];
+}
+
+/** Dutch Flower Auction pacing: seconds between each tick of the clock. */
+export function useDutchTickSeconds(): [number, (v: number) => void] {
+  const [v, setV] = useLocalStorage("rootpicker.dutchTickSeconds", DEFAULT_DUTCH_TICK_SECONDS);
+  const clamp = (n: number) => Math.min(MAX_DUTCH_TICK_SECONDS, Math.max(MIN_DUTCH_TICK_SECONDS, n));
+  return [clamp(v), (n: number) => setV(clamp(n))];
 }
 
 export function useExplainerOpen(id: string): [boolean, (v: boolean) => void] {

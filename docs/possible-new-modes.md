@@ -197,6 +197,109 @@ Tuning / open questions:
 - Could charge every player their bid, or only the players who beat someone.
   Charging everyone is simpler and keeps bluff-bidding honest.
 
+## Dutch Flower Auction — IMPLEMENTED
+
+*Note: this section had no pre-existing sketch in this doc (checked the working
+tree, `origin/main`, and every other branch) — it was authored from the build
+brief's Rules/mechanics description below, then implemented to match, rather
+than the usual "sketch first, implement later" flow the other sections follow.*
+
+Now live as `src/modes/DutchAuctionMode.tsx` (`ModeId: "dutch"`), reducer and pure
+helpers in `src/lib/dutch.ts` (reuses `nextLegalFaction` from `src/lib/bounty.ts`
+for the reveal-deck gating). Settings hooks (`useDutchRange`, `useDutchTickSeconds`)
+live in `src/lib/store.ts` alongside the raffle ticket count pattern.
+
+A live, real-time twist on Bounty Draft: instead of a token economy, a price
+clock does the pricing for you.
+
+### Rules
+
+1. Shuffle seats, random first player (cosmetic only — nobody picks in turn
+   order here). App builds a face-down deck from owned factions (Second
+   Vagabond excluded, as in Hand draft), same as Bounty.
+2. One faction reveals on the block at a time. It sits frozen for ~2 seconds
+   (CLAIM disabled) so the table can see what's up, then a price clock starts
+   at −4 VP and ticks toward +4 VP on a fixed interval.
+3. The first unassigned player to tap **CLAIM** takes the faction plus the VP
+   showing on the clock at that instant, and leaves the auction. If nobody
+   claims by the time the clock hits +4, it simply holds there — no
+   auto-assignment, no penalty for waiting past the cap, since nothing further
+   improves.
+4. The next faction reveals for the remaining players, same freeze-then-clock
+   cycle. Once only one player is left without a faction, there's no one left
+   to race against: they're handed the final reveal automatically at +4 VP,
+   no clock, no tap.
+
+Termination is guaranteed exactly like Bounty's token economy, just without
+tokens: every reveal either gets claimed (clock keeps running until it does,
+capped at +4) or — for the very last seat — is resolved automatically. Legal
+combinations are guaranteed by the same reveal-time filter Bounty uses.
+
+### Why fair
+
+Same self-pricing market as Bounty Draft, but continuous instead of turn-based:
+the price is only ever exactly what the table collectively decided a faction
+was worth by not having claimed it yet. A faction nobody wants keeps climbing
+until someone decides +2, then +3 VP is worth it; a faction several players
+want gets claimed while the price is still negative, because whoever moves
+first locks in the best price available. Unlike Bounty's pass-token economy,
+there's no scarce resource to manage (no tokens to run out of) — the only
+scarce resource is reaction time, which is exactly the tension a live auction
+is supposed to create.
+
+### Why legal combinations
+
+Identical mechanism to Bounty Draft: the reveal deck is filtered through
+`nextLegalFaction` (`src/lib/bounty.ts`), which wraps `reachBlockReason`
+(`src/lib/reach.ts`) — a faction only ever reaches the block if claimed-set + it
++ best remaining can still hit `effTarget`. The invariant holds after every
+claim, so the final table always reaches the Law 5.2 total, and Vagabond/Knaves
+exclusion (A.8.1) plus Second Vagabond gating come free from the same function.
+The Adventurous 17+ checkbox works unchanged.
+
+Caveat for the Explainer: starting VP from the clock is a house rule, not from
+the Law — same precedent as Bounty's bounty VP and Wishlist's +1 VP suggestion.
+
+### Implementation notes
+
+The reducer (`dutchReducer` in `src/lib/dutch.ts`) is deliberately kept 100%
+pure: no `setInterval`, no `Date.now()`, no `Math.random()` inside it. The
+component owns real time —
+one `useEffect` fires a timeout that dispatches `BEGIN_CLOCK` after the ~2s
+preview freeze, another re-arms a `setTimeout` after every price change to
+dispatch `TICK`, and it stops re-arming once the price reaches the cap (the
+clock "holds"). `CLAIM` carries the price the button displayed at tap time as
+part of the action payload, rather than trusting the reducer to recompute it —
+this is what keeps a recorded action sequence deterministically replayable
+regardless of exact timer timing, which `src/lib/dutch.test.ts` exercises
+directly (fixed action scripts, no fake timers needed). The deck itself is
+shuffled by the component and passed into `START` as data, so even seat/deck
+randomization stays outside the reducer.
+
+UI: `Explainer`, `SetupHero`, `NameInputs` for setup; `OrderList` shows table
+status (claimed vs. still racing); a single `FactionCard` for the faction on
+the block; a `.dutch-clock` price stamp + progress bar; a full-width
+`.dutch-claim-btn` per still-unclaimed player (Section spec: "big full-width
+CLAIM target") rather than a single shared button, since there's no reducer
+concept of "whose turn" to gate a shared button on. Done screen reuses
+`SummaryList`, `SetupChecklist`, `ReachStampLine`, `HirelingSetup`,
+`VagabondCharacterSetup`, `KnaveCaptainSetup` exactly like Bounty. New
+`ModeId: "dutch"`, `houseRule: true` in `ModeSelect`.
+
+Tuning, both exposed in Settings (`src/modes/SettingsMode.tsx`) and persisted
+per-device: price range ±2–±8 VP (default ±4, per the spec) via
+`useDutchRange`; clock pace 0.5–5s per tick (default 1.5s) via
+`useDutchTickSeconds`. The VP step size per tick (fixed at 1 VP) is not
+exposed as a setting — two configurable dials felt like enough surface area,
+and a variable step interacts awkwardly with "price at tap time" bookkeeping.
+
+Deviation from a literal reading of the prompt: "first unassigned player to
+tap CLAIM" is realized as one full-width button per remaining player (tap your
+own name) rather than a single anonymous CLAIM button followed by a
+who-was-that prompt — it's simpler, still satisfies "big full-width CLAIM
+target," and avoids a two-step interaction that would otherwise need its own
+undo semantics.
+
 ## Exile Draft
 
 Inverse of drafting: nobody picks a faction — everyone removes them. Ban down

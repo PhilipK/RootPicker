@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useAppContext } from "../context/AppContext";
 import { shuffleArr } from "../lib/shuffle";
 import {
@@ -27,6 +27,8 @@ import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
+import { FloatingConfirm } from "../components/FloatingConfirm";
+import { RevealCeremony, type RevealSeatItem } from "../components/RevealCeremony";
 import { HirelingSetup } from "../components/HirelingSetup";
 import { VagabondCharacterSetup } from "../components/VagabondCharacterSetup";
 import { KnaveCaptainSetup } from "../components/KnaveCaptainSetup";
@@ -164,7 +166,7 @@ function renderLogEntry(entry: FavLogEntry, seats: string[]): ReactNode {
         </>
       );
     case "ban-applied":
-      return <>✖ {name(entry.by)} banned {fname(entry.id)}.</>;
+      return <>{name(entry.by)} banned {fname(entry.id)}.</>;
     case "fav-void-banned":
       return (
         <>
@@ -206,15 +208,28 @@ function renderLogEntry(entry: FavLogEntry, seats: string[]): ReactNode {
         </>
       );
     case "fav-applied":
-      return <>♥ {name(entry.by)} plays {fname(entry.id)}.</>;
+      return <>{name(entry.by)} plays {fname(entry.id)}.</>;
     case "assign-applied":
-      return <>🎯 {name(entry.by)} picks {fname(entry.id)}.</>;
+      return <>{name(entry.by)} picks {fname(entry.id)}.</>;
     case "half-removed":
       return (
         <>
           {fname(entry.id)} leaves the pool — never in the same game as {fname(entry.causeId)} (A.8.1).
         </>
       );
+  }
+}
+
+/** The glyph stamped onto a reveal-log line: ♥ locked, ✖ banned/removed, ⚡ voided, 🎯 picked. */
+function logStamp(entry: FavLogEntry): string {
+  if (entry.type === "assign-applied") return "🎯";
+  switch (entry.cls) {
+    case "fav-line":
+      return "♥";
+    case "ban-line":
+      return "✖";
+    case "void-line":
+      return "⚡";
   }
 }
 
@@ -344,19 +359,18 @@ export function FavBanMode() {
               );
             })}
           </div>
-          <div className="btn-row">
-            <button
-              className="btn"
-              disabled={!state.pickId}
-              onClick={() => dispatch({ type: "CONFIRM", playerCount, target: effTarget })}
-            >
+          <FloatingConfirm
+            ready={!!state.pickId}
+            hint={state.pickKind === "fav" ? "Tap the faction you want to keep" : "Tap the faction you want to ban"}
+          >
+            <button className="btn" onClick={() => dispatch({ type: "CONFIRM", playerCount, target: effTarget })}>
               {state.pickId
                 ? state.pickKind === "fav"
                   ? `Lock in ♥ ${byId[state.pickId].name}`
                   : `Lock in ✖ ban ${byId[state.pickId].name}`
                 : "Lock in"}
             </button>
-          </div>
+          </FloatingConfirm>
         </section>
       </PassDeviceGate>
     );
@@ -366,9 +380,12 @@ export function FavBanMode() {
     return (
       <section>
         <h2>{state.round === 1 ? "The Reveal" : `The Reveal — round ${state.round}`}</h2>
-        <ul className="reveal-log">
+        <ul className="reveal-log dramatic">
           {state.log.map((entry, i) => (
-            <li key={i} className={entry.cls}>
+            <li key={i} className={entry.cls} style={{ "--i": i } as CSSProperties}>
+              <span className="log-stamp" aria-hidden="true">
+                {logStamp(entry)}
+              </span>
               {renderLogEntry(entry, state.seats)}
             </li>
           ))}
@@ -427,11 +444,11 @@ export function FavBanMode() {
               );
             })}
           </div>
-          <div className="btn-row">
-            <button className="btn" disabled={!state.assignPickId} onClick={() => dispatch({ type: "ASSIGN_CONFIRM" })}>
+          <FloatingConfirm ready={!!state.assignPickId} hint="Tap a faction from what survives">
+            <button className="btn" onClick={() => dispatch({ type: "ASSIGN_CONFIRM" })}>
               {state.assignPickId ? `Pick ${byId[state.assignPickId].name}` : "Pick"}
             </button>
-          </div>
+          </FloatingConfirm>
         </section>
       </PassDeviceGate>
     );
@@ -441,9 +458,12 @@ export function FavBanMode() {
     return (
       <section>
         <h2>Picked</h2>
-        <ul className="reveal-log">
+        <ul className="reveal-log dramatic">
           {state.log.map((entry, i) => (
-            <li key={i} className={entry.cls}>
+            <li key={i} className={entry.cls} style={{ "--i": i } as CSSProperties}>
+              <span className="log-stamp" aria-hidden="true">
+                {logStamp(entry)}
+              </span>
               {renderLogEntry(entry, state.seats)}
             </li>
           ))}
@@ -487,9 +507,19 @@ export function FavBanMode() {
       faded: true,
     });
   }
+  const revealItems: RevealSeatItem[] = state.seats.map((name, i) => {
+    const a = state.assigned.find((x) => x.seatIndex === i)!;
+    return {
+      name,
+      faction: byId[a.id],
+      first: i === 0,
+      note: a.via === "fav" ? "locked as favorite" : "picked from the survivors",
+    };
+  });
 
   return (
     <section>
+      <RevealCeremony storageKey="fav" items={revealItems} />
       <h2>The Woodland is Set</h2>
       <ReachStampLine total={total} recommended={rec} />
       <SummaryList items={summaryItems} />

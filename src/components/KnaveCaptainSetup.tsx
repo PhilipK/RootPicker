@@ -33,7 +33,7 @@ export function KnaveCaptainSetup({ storageKey, finalFactionIds }: { storageKey:
       </Explainer>
       {valid ? (
         <>
-          <ul className="captain-reveal">
+          <ul className="captain-reveal" key={valid.dealtIds.join("|")}>
             {valid.dealtIds.map((id) => {
               const c = byKnaveCaptainId[id];
               const excluded = valid.excludedId === id;

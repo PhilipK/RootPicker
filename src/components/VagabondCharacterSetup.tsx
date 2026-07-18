@@ -54,7 +54,7 @@ export function VagabondCharacterSetup({ storageKey, finalFactionIds }: { storag
               deal.
             </p>
           )}
-          <ul className="character-reveal">
+          <ul className="character-reveal" key={valid.characterIds.join("|")}>
             {valid.characterIds.map((id, i) => {
               const c = byVagabondCharacterId[id];
               return (

@@ -61,7 +61,7 @@ export function HirelingSetup({ storageKey, finalFactionIds }: { storageKey: str
               more packs in Settings for a full deal of three.
             </p>
           )}
-          <ul className="hireling-reveal">
+          <ul className="hireling-reveal" key={valid.picks.map((p) => `${p.id}${p.demoted ? "*" : ""}`).join("|")}>
             {(valid?.picks ?? []).map((p) => {
               const h = byHirelingId[p.id];
               const shownName = p.demoted ? h.demoted : h.promoted;

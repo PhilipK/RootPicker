@@ -18,6 +18,8 @@ import { SummaryList, type SummaryItem } from "../components/SummaryList";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { ReachStampLine } from "../components/ReachStampLine";
 import { ConfirmResetButton } from "../components/ConfirmResetButton";
+import { FloatingConfirm } from "../components/FloatingConfirm";
+import { RevealCeremony, type RevealSeatItem } from "../components/RevealCeremony";
 import { HirelingSetup } from "../components/HirelingSetup";
 import { VagabondCharacterSetup } from "../components/VagabondCharacterSetup";
 import { KnaveCaptainSetup } from "../components/KnaveCaptainSetup";
@@ -235,11 +237,11 @@ export function TradingPostMode() {
               );
             })}
           </div>
-          <div className="btn-row">
+          <FloatingConfirm ready>
             <button className="btn" onClick={handleConfirm}>
               {picks.length ? `Lock in my ${picks.length} trade ${picks.length === 1 ? "wish" : "wishes"}` : "Keep my deal"}
             </button>
-          </div>
+          </FloatingConfirm>
         </section>
       </PassDeviceGate>
     );
@@ -275,8 +277,16 @@ export function TradingPostMode() {
     };
   });
 
+  const revealItems: RevealSeatItem[] = state.seats.map((name, i) => ({
+    name,
+    faction: byId[assign[i]],
+    first: i === 0,
+    note: assign[i] === state.deal[i] ? "kept their deal" : `traded away the ${byId[state.deal[i]].name}`,
+  }));
+
   return (
     <section>
+      <RevealCeremony storageKey="trade" items={revealItems} />
       <h2>The Trades</h2>
       <ul className="reveal-log">
         {cycles.map((c, i) => {

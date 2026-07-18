@@ -215,7 +215,10 @@ export function RiverfolkAuctionMode() {
     return (
       <section>
         <h2>Bids Revealed</h2>
-        <OrderList items={items} />
+        {/* lines flip in from the bottom of the list upward, so the winning bid lands last */}
+        <div className="bid-reveal">
+          <OrderList items={items} />
+        </div>
         <p className="note">
           Highest bid picks first; ties were broken randomly. Overbids were trimmed to one above the next bid,
           then everyone was shifted up so the biggest spender starts at 0 — no negative scores to track. ★ marks

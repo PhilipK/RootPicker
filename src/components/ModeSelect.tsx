@@ -165,6 +165,18 @@ function RaffleIcon() {
   );
 }
 
+function ExileIcon() {
+  // a struck-through circle (banned) with an arrow casting it out of the pool
+  return (
+    <svg {...strokeProps}>
+      <circle cx="9" cy="12" r="5.4" />
+      <path d="M5.4 8.4l7.2 7.2" />
+      <path d="M14.5 12h6" />
+      <path d="M17.7 9l2.8 3-2.8 3" />
+    </svg>
+  );
+}
+
 function GearIcon() {
   return (
     <svg {...strokeProps}>
@@ -275,6 +287,13 @@ export const GAME_MODES: ModeMeta[] = [
     desc: "Spread ten secret tickets across the factions you want, then watch the urn draw winners one ticket at a time.",
     best: "gamblers who'd rather bet on a faction than argue for it",
   },
+  {
+    id: "exile",
+    label: "Exile Draft",
+    icon: <ExileIcon />,
+    desc: "Nobody picks — everyone bans down the shared pool in turn, then the app deals a random legal lineup from what survives.",
+    best: "tables who trust the dice more than each other's picks",
+  },
 ];
 
 export const SETTINGS_META: Pick<ModeMeta, "id" | "label" | "icon"> = {
@@ -293,7 +312,7 @@ export function ModeSelect({ onSelect }: { onSelect: (m: ModeId) => void }) {
   return (
     <section className="mode-select">
       <p className="mode-select-intro">
-        Twelve ways to seat the Woodland. Choose how your table settles on factions.
+        Thirteen ways to seat the Woodland. Choose how your table settles on factions.
       </p>
 
       <ul className="mode-grid">

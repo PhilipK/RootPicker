@@ -197,10 +197,38 @@ Tuning / open questions:
 - Could charge every player their bid, or only the players who beat someone.
   Charging everyone is simpler and keeps bluff-bidding honest.
 
-## Exile Draft
+## Exile Draft — IMPLEMENTED
 
-Inverse of drafting: nobody picks a faction — everyone removes them. Ban down
-the pool, then the app deals a random legal lineup from the survivors.
+Now live as `src/modes/ExileDraftMode.tsx` (`ModeId: "exile"`), pure logic in
+`src/lib/exile.ts`. Inverse of drafting: nobody picks a faction — everyone
+removes them. Ban down the pool, then the app deals a random legal lineup
+from the survivors.
+
+Deviations from the sketch below:
+- "Pool is ≤14 factions" counted the Second Vagabond; the actual working pool
+  excludes it (`f.id !== "vagabond2"`), same convention every other mode uses
+  since it isn't separately bannable — so the real cap is ≤13.
+- "The final random deal reuses the legality-aware roll that Fav/Ban mode
+  already has" turned out to mean `favFeasible` (`src/lib/fav.ts`) specifically,
+  not a literal random-roll function: it's an existence check ("can `slots`
+  players still be served"), degenerate exactly to a single-subset legality
+  check when `slots` equals the subset's own size. `exile.ts` reuses it for
+  both the ban guard (`banBlockReason`, `slots = playerCount` over the whole
+  remaining pool) and the final enumeration (`legalLineups`, `slots =
+  subset.length` to validate each candidate lineup from `combinations`,
+  imported from `src/lib/wish.ts` — also reused rather than re-derived). The
+  actual `Math.random()` calls live in the component (`ExileDraftMode.tsx`),
+  which passes the chosen index and a `shuffleArr`-shuffled seat order into
+  the `DEAL` action, keeping `exileReducer` itself pure.
+- Added an explicit `revealReady` phase between the last ban and the deal
+  (rather than dealing automatically) so there's a deliberate "Reveal the
+  Woodland" button and a `RevealCeremony`, matching the reveal moment every
+  other randomness-driven mode (Raffle, Fav/Ban, Trading Post) already gives
+  players.
+- When the owned pool is already at the 2-slack floor (`totalBans` clamps to
+  0), the mode skips the ban phase entirely and starts straight in
+  `revealReady` — same clamp the doc's formula already implied, just made
+  explicit as a phase transition.
 
 ### Rules
 

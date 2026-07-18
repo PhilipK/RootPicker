@@ -32,6 +32,7 @@ export type ModeId =
   | "exile"
   | "santa"
   | "typecast"
+  | "mulligan"
   | "settings";
 
 export type Tier = "new" | "comfortable" | "expert";

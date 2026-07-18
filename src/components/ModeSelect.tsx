@@ -214,6 +214,18 @@ function TypecastIcon() {
   );
 }
 
+function MulliganIcon() {
+  // a dealt card with a curved "redo" arrow — trade it in for a new one
+  return (
+    <svg {...strokeProps}>
+      <rect x="4" y="4" width="10.5" height="15" rx="1.4" />
+      <circle cx="9.25" cy="9.5" r="1.15" {...fillDot} />
+      <path d="M15.5 8.5a4.3 4.3 0 1 1-1.1-2.9" />
+      <path d="M15.5 4.6v3h-3" />
+    </svg>
+  );
+}
+
 function GearIcon() {
   return (
     <svg {...strokeProps}>
@@ -351,6 +363,13 @@ export const GAME_MODES: ModeMeta[] = [
     icon: <TypecastIcon />,
     desc: "Everyone secretly casts one faction for every other player; the app finds the legal lineup that matches the most nominations.",
     best: "tables who already know what everyone else should play",
+  },
+  {
+    id: "mulligan",
+    label: "Mulligan",
+    icon: <MulliganIcon />,
+    desc: "Everyone is dealt a secret faction and, one at a time, keeps it or mulligans it for a blind, binding replacement from the market.",
+    best: "tables who want an easy out from a deal they don't like, without letting anyone choose their way into a favorite",
   },
 ];
 

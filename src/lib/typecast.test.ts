@@ -15,7 +15,7 @@ const T3 = REACH_TARGET[3]; // 18
 const T4 = REACH_TARGET[4]; // 21
 
 function fac(id: string, reach: number): Faction {
-  return { id, name: id, reach, type: "militant", corner: false, difficulty: 1 };
+  return { id, name: id, reach, type: "militant", corner: false, difficulty: 1, aggression: 3, footprint: 3 };
 }
 
 describe("typecastTargets", () => {

@@ -431,7 +431,7 @@ export function ModeSelect({ onSelect }: { onSelect: (m: ModeId) => void }) {
   return (
     <section className="mode-select">
       <p className="mode-select-intro">
-        Thirteen ways to seat the Woodland. Choose how your table settles on factions.
+        Nineteen ways to seat the Woodland. Choose how your table settles on factions.
       </p>
 
       <ul className="mode-grid">

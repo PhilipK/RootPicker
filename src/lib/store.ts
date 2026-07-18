@@ -18,6 +18,7 @@ const MODE_IDS: ModeId[] = [
   "potluck",
   "trade",
   "raffle",
+  "typecast",
   "settings",
 ];
 

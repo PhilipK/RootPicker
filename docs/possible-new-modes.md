@@ -366,3 +366,85 @@ Tuning / open questions:
   to draw.
 - Burned tickets are shown live as they're drawn — the drama is the point. If
   that drags at 6 players, a "draw all" exists.
+
+## Typecast — IMPLEMENTED
+
+Now live as `src/modes/TypecastMode.tsx` (`ModeId: "typecast"`), voting math in
+`src/lib/typecast.ts`. Pass-the-device casting call: everyone secretly nominates
+who should play what, and the app finds the legal lineup that satisfies the most
+nominations.
+
+*Note on this write-up:* the design sketch below wasn't in this doc yet when
+implementation started; it's written up here from the task brief and matches
+what actually shipped, in the same Rules/Why fair/Why legal/Implementation-notes
+shape as every other entry, so the section stands on its own for anyone reading
+the doc later.
+
+### Rules
+
+1. Shuffle seats, as usual. Device passes around once: on their turn, each
+   player secretly casts one ballot per *other* seat at the table — "I think
+   you should play X" — never for themselves. A 4-player game means 3
+   nominations per player, 12 ballots total. Nobody sees anyone else's ballot,
+   during or after.
+2. Once every ballot is in, the app checks every reach-safe, `playerCount`-size
+   combination of owned factions (Vagabond/Knaves exclusion respected, Second
+   Vagabond excluded) and, for each one, solves the optimal assignment of
+   factions to seats that maximizes total *matched* nominations — how many of
+   the ballots cast for a seat agree with the faction it actually receives.
+   The legal combination (and assignment within it) with the highest total
+   wins; ties are broken at random.
+3. Reveal shows, per seat, how many of the other `playerCount - 1` players
+   nominated the faction they ended up with — a vote count, not attribution.
+   Nobody finds out who cast which ballot, only the tally. Seat 0 is first
+   player, the standing convention.
+
+### Why fair
+
+Nominating for someone else is lower-stakes than nominating for yourself: you
+have no incentive to sandbag, since the faction you name never lands on you.
+That makes honest signal ("I think you'd enjoy the Eyrie" / "you'd be good at
+this one") the dominant strategy, and the anonymous tally means nobody has to
+own an unflattering read on a teammate's skill level out loud. Because the app
+searches every legal combination rather than working from a fixed pool, a
+faction that would have been excluded outright still gets a fair shot if
+enough of the table calls it for someone.
+
+### Why legal combinations
+
+Identical search shape to Wishlist mode: enumerate reach-safe, `playerCount`-
+size subsets of the owned pool via `combinations` (at most C(13,6)=1716,
+reused directly from `src/lib/wish.ts`), reject any subset with both Vagabond
+and Knaves (A.8.1), and solve each surviving subset optimally with a bitmask
+DP over player-to-faction assignments — `bitmaskAssignVotes` mirrors
+`bitmaskAssign` with the score function swapped from "this player's own ranked
+picks" to "how many *other* players nominated this faction for this seat"
+(`countVotesForFaction`). Reach and A.8.1 are enforced by construction on every
+candidate subset, matching Wishlist's precedent of reach + A.8.1-only legality
+(no militant-presence check). A table where nobody's nominations survive
+legality still gets a valid, all-zero-vote assignment — legality always wins
+over turnout, and `src/lib/typecast.test.ts` builds exactly that case.
+
+### Implementation notes
+
+`usePersistedReducer` machine (`setup → pass → nominate → done`), nesting a
+`subTurn` inside each player's main turn to step through their `playerCount - 1`
+targets one at a time before the device passes on — `PassDeviceGate` only gates
+between *players*, matching Wishlist and Raffle, not between individual
+nominations. `typecastTargets` (pure, unit-tested) computes each actor's
+remaining target list. Ballots live as an NxN `Ballots` matrix
+(`votes[i][j]` = faction seat `i` nominated for seat `j`); `emptyBallots` seeds
+it. The search itself — `findBestTypecastAssignment` — is deterministic;
+randomness (which tied-best subset wins) is injected at the final submit from
+the component via `Math.random()`, exactly like Wishlist, so the reducer stays
+pure. Reveal reuses `RevealCeremony` + `.reveal-log`-style summary lines
+showing `k / (playerCount - 1)` votes matched per seat, never who cast them.
+No house-rule tag: nothing here touches scoring, only who ends up with which
+already-legal faction.
+
+Deviation from a literal read of "reuse Wishlist's legal-assignment search":
+rather than importing the whole solver, `typecast.ts` imports just
+`combinations` from `wish.ts` and reimplements the bitmask DP with the swapped
+score function, since the two DPs differ in what the score depends on (a
+single player's own picks vs. every other player's ballot for one seat) enough
+that sharing one generic function would've cost more clarity than it saved.

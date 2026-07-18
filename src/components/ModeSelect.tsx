@@ -165,6 +165,18 @@ function RaffleIcon() {
   );
 }
 
+function TypecastIcon() {
+  // a folded secret ballot dropping into a box — anonymous nomination
+  return (
+    <svg {...strokeProps}>
+      <path d="M4 11.5 12 7l8 4.5" />
+      <rect x="4" y="11.5" width="16" height="8" rx="1.4" />
+      <path d="M9 15h6" />
+      <circle cx="17" cy="8" r="1.1" {...fillDot} />
+    </svg>
+  );
+}
+
 function GearIcon() {
   return (
     <svg {...strokeProps}>
@@ -275,6 +287,13 @@ export const GAME_MODES: ModeMeta[] = [
     desc: "Spread ten secret tickets across the factions you want, then watch the urn draw winners one ticket at a time.",
     best: "gamblers who'd rather bet on a faction than argue for it",
   },
+  {
+    id: "typecast",
+    label: "Typecast",
+    icon: <TypecastIcon />,
+    desc: "Everyone secretly casts one faction for every other player; the app finds the legal lineup that matches the most nominations.",
+    best: "tables who already know what everyone else should play",
+  },
 ];
 
 export const SETTINGS_META: Pick<ModeMeta, "id" | "label" | "icon"> = {
@@ -293,7 +312,7 @@ export function ModeSelect({ onSelect }: { onSelect: (m: ModeId) => void }) {
   return (
     <section className="mode-select">
       <p className="mode-select-intro">
-        Twelve ways to seat the Woodland. Choose how your table settles on factions.
+        Thirteen ways to seat the Woodland. Choose how your table settles on factions.
       </p>
 
       <ul className="mode-grid">

@@ -165,6 +165,20 @@ function RaffleIcon() {
   );
 }
 
+function OmakaseIcon() {
+  // three mood sliders — dial in a game, not a faction
+  return (
+    <svg {...strokeProps}>
+      <path d="M4 7h16" />
+      <circle cx="9" cy="7" r="2.1" {...fillDot} />
+      <path d="M4 12h16" />
+      <circle cx="15" cy="12" r="2.1" {...fillDot} />
+      <path d="M4 17h16" />
+      <circle cx="11" cy="17" r="2.1" {...fillDot} />
+    </svg>
+  );
+}
+
 function GearIcon() {
   return (
     <svg {...strokeProps}>
@@ -275,6 +289,13 @@ export const GAME_MODES: ModeMeta[] = [
     desc: "Spread ten secret tickets across the factions you want, then watch the urn draw winners one ticket at a time.",
     best: "gamblers who'd rather bet on a faction than argue for it",
   },
+  {
+    id: "omakase",
+    label: "Omakase",
+    icon: <OmakaseIcon />,
+    desc: "Everyone secretly dials in a mood — aggression, footprint, complexity — with no faction names in sight, and the app plates up the closest legal fit.",
+    best: "trusting the kitchen over your own faction shortlist",
+  },
 ];
 
 export const SETTINGS_META: Pick<ModeMeta, "id" | "label" | "icon"> = {
@@ -293,7 +314,7 @@ export function ModeSelect({ onSelect }: { onSelect: (m: ModeId) => void }) {
   return (
     <section className="mode-select">
       <p className="mode-select-intro">
-        Twelve ways to seat the Woodland. Choose how your table settles on factions.
+        Thirteen ways to seat the Woodland. Choose how your table settles on factions.
       </p>
 
       <ul className="mode-grid">

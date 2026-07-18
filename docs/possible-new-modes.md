@@ -366,3 +366,90 @@ Tuning / open questions:
   to draw.
 - Burned tickets are shown live as they're drawn — the drama is the point. If
   that drags at 6 players, a "draw all" exists.
+
+## Omakase — IMPLEMENTED
+
+Now live as `src/modes/OmakaseMode.tsx` (`ModeId: "omakase"`), scoring in
+`src/lib/omakase.ts`. Chef's tasting menu for faction picking: nobody names a
+faction, they just describe the game they're in the mood for, and the app
+plates up a lineup to match.
+
+### Rules
+
+1. Shuffle seats. Device passes around once: each player secretly sets three
+   mood sliders (1–5) — Aggression (peaceful ↔ warlike), Footprint (compact ↔
+   sprawling), Complexity (simple ↔ brain-burning). No faction names or art
+   appear anywhere in this phase — just the sliders and their plain-language
+   ends — so nobody's dial is anchored to "the faction I already love."
+2. Once every seat has submitted, the app searches every reach-safe
+   `playerCount`-subset of the owned pool (the same exhaustive search
+   Wishlist mode runs), scores every possible player-to-faction assignment
+   within each legal subset by total slider distance, and keeps whichever
+   legal assignment minimizes it table-wide.
+3. Reveal is a "tasting menu": each player's plate shows their faction plus
+   one hand-written line explaining the pairing, drawn from a small static
+   table of fragments banded by how close the fit actually was — not prose
+   generated from the numbers, just the honest one of four canned bands
+   ("spot-on" / "close" / "workable" / "a stretch") for that player's actual
+   distance.
+
+### Why fair
+
+Nobody's preference is worth more than anyone else's dial position — the
+optimizer scores the whole table's total distance, not any one seat's. And
+because no faction names are visible while sliders are set, nobody can
+reverse-engineer "set my dials to fish for the Vagabond" — the sliders
+describe a *game*, not a faction; the mapping from mood to faction is the
+kitchen's problem, not the diner's.
+
+### Why legal combinations
+
+Identical backbone to Wishlist: every candidate subset is filtered by total
+reach ≥ target before its assignment is even scored, so legality is a hard
+gate the fit-optimizer runs *inside*, never something it can trade away for a
+closer match. Vagabond/Knaves exclusion (A.8.1) and Second Vagabond gating
+are enforced the same way (`findBestOmakaseAssignment` also strips
+`vagabond2` from its input pool defensively, so it can't leak in even if a
+caller forgets to filter it, unlike Wishlist which relies on the caller).
+When the closest-fitting subset for the table doesn't reach target, the app
+is honest about it in the reveal line rather than pretending the compromise
+wasn't a compromise — that's what the "workable" / "a stretch" bands are
+for.
+
+### Implementation notes
+
+Pure logic in `src/lib/omakase.ts`, unit-tested in `src/lib/omakase.test.ts`
+(scoring sanity on hand-built cases, legality on every axis, and a case that
+proves legality gates fit rather than the other way around — a hand-built
+3-faction pool where the mood-closest pair fails reach and the app is forced
+onto the only legal pair instead). `usePersistedReducer` machine
+(`setup → pass → slide → done`), phases mirror Wishlist's `pass → rank`
+almost exactly, just with three range inputs instead of a faction grid —
+`PassDeviceGate` gates each player's slider screen the same way, `OrderList`
+tracks who's up next.
+
+The subset-and-assignment search reuses `combinations` from `lib/wish.ts`
+directly, plus a new sibling of `bitmaskAssign` in that same file,
+`bitmaskAssignBy` — generalized to take a caller-supplied per-(player, item)
+score instead of hard-coding wish-rank scoring. Wishlist's own
+`bitmaskAssign` is now a thin wrapper over it, so both modes run the literal
+same DP over the literal same subset search; only the score function
+differs. Tie-break randomness (picking among equally-good legal lineups) is
+injected at SUBMIT from the component, same as Wishlist; the reducer itself
+stays pure.
+
+Data cost: `Faction` gained `aggression` and `footprint` (1–5, judgment
+calls — see the comment above `FACTIONS` in `src/data/factions.ts`).
+`complexity` reuses the existing `difficulty` field (1–13, Teaching Tiers'
+ranking), linearly rescaled to 1–5 in `omakase.ts` (`normalizedComplexity`)
+so all three axes share a scale for distance scoring.
+
+Deviations from the brief: the reveal uses `SummaryList` (one line per
+player, faction + reach/type + the plate justification), not `.reveal-log`.
+Omakase's reveal is a single simultaneous assignment, structurally identical
+to Wishlist's, not a sequential log of discrete events the way Fav/Ban's
+stamps or Raffle's draws are — `.reveal-log` fits *those* because each line
+is "something that just happened"; here every plate lands at once, so
+Wishlist's own reveal pattern was the honest fit. No house-rule tag: like
+Wishlist, Trading Post, and Potluck, this only changes who ends up with which
+already-legal faction, nothing about scoring.

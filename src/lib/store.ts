@@ -23,6 +23,7 @@ const MODE_IDS: ModeId[] = [
   "santa",
   "typecast",
   "mulligan",
+  "omakase",
   "settings",
 ];
 

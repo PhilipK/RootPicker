@@ -561,6 +561,17 @@ input[type="text"] {
 }
 .card.selected .rank-badge { background: var(--gold); }
 
+/* ---------- omakase mood sliders ---------- */
+.mood-slider { margin: 20px 0; }
+.mood-slider-labels {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+  font-size: .82rem; color: var(--ink-soft); font-style: italic; margin-bottom: 6px;
+}
+.mood-slider-labels b { font-style: normal; font-variant: small-caps; letter-spacing: .05em; color: var(--ink); }
+.mood-slider input[type="range"] {
+  width: 100%; accent-color: var(--moss); cursor: pointer;
+}
+
 /* ---------- optional compact list view ---------- */
 body.list-view .grid { grid-template-columns: 1fr; gap: 8px; }
 body.list-view .card { flex-direction: row; align-items: stretch; text-align: left; }

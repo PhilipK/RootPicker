@@ -37,13 +37,19 @@ export interface WishPlayer {
 }
 
 /** Optimal assignment problem via bitmask DP: dp[mask] = best total score
-    assigning the first popcount(mask) players to the faction-index set `mask`. */
-export function bitmaskAssign(
-  factions: Faction[],
-  players: WishPlayer[],
-  wishCount: number,
-): { score: number; assign: string[] } | null {
-  const N = players.length;
+    assigning the first popcount(mask) players to the item-index set `mask`.
+    Generic over what "score" means — the caller supplies a per-(player
+    index, item) function — so any mode that needs "best pairing of N players
+    to N items" can reuse the exact same search. `bitmaskAssign` below (wish
+    ranks) and Omakase's slider-distance scoring (`src/lib/omakase.ts`) are
+    both thin callers over this one DP. */
+export function bitmaskAssignBy<T>(
+  items: T[],
+  playerCount: number,
+  scoreOf: (playerIndex: number, item: T) => number,
+): { score: number; assign: number[] } | null {
+  const N = playerCount;
+  if (items.length !== N) return null;
   const full = (1 << N) - 1;
   const dp = new Array(1 << N).fill(-Infinity);
   const parent = new Array(1 << N).fill(-1);
@@ -55,7 +61,7 @@ export function bitmaskAssign(
     if (p >= N) continue;
     for (let f = 0; f < N; f++) {
       if (mask & (1 << f)) continue;
-      const sc = dp[mask] + wishScore(players[p].picks, factions[f].id, wishCount);
+      const sc = dp[mask] + scoreOf(p, items[f]);
       const nmask = mask | (1 << f);
       if (sc > dp[nmask]) {
         dp[nmask] = sc;
@@ -65,13 +71,25 @@ export function bitmaskAssign(
   }
   if (dp[full] === -Infinity) return null;
   let mask = full;
-  const assign = new Array(N);
+  const assign: number[] = new Array(N);
   for (let p = N - 1; p >= 0; p--) {
     const f = parent[mask];
-    assign[p] = factions[f].id;
+    assign[p] = f;
     mask ^= 1 << f;
   }
   return { score: dp[full], assign };
+}
+
+/** Optimal assignment problem via bitmask DP: dp[mask] = best total score
+    assigning the first popcount(mask) players to the faction-index set `mask`. */
+export function bitmaskAssign(
+  factions: Faction[],
+  players: WishPlayer[],
+  wishCount: number,
+): { score: number; assign: string[] } | null {
+  const result = bitmaskAssignBy(factions, players.length, (p, f) => wishScore(players[p].picks, f.id, wishCount));
+  if (!result) return null;
+  return { score: result.score, assign: result.assign.map((i) => factions[i].id) };
 }
 
 export interface WishAssignment {

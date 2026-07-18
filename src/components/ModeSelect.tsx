@@ -226,6 +226,20 @@ function MulliganIcon() {
   );
 }
 
+function OmakaseIcon() {
+  // three mood sliders — dial in a game, not a faction
+  return (
+    <svg {...strokeProps}>
+      <path d="M4 7h16" />
+      <circle cx="9" cy="7" r="2.1" {...fillDot} />
+      <path d="M4 12h16" />
+      <circle cx="15" cy="12" r="2.1" {...fillDot} />
+      <path d="M4 17h16" />
+      <circle cx="11" cy="17" r="2.1" {...fillDot} />
+    </svg>
+  );
+}
+
 function GearIcon() {
   return (
     <svg {...strokeProps}>
@@ -370,6 +384,13 @@ export const GAME_MODES: ModeMeta[] = [
     icon: <MulliganIcon />,
     desc: "Everyone is dealt a secret faction and, one at a time, keeps it or mulligans it for a blind, binding replacement from the market.",
     best: "tables who want an easy out from a deal they don't like, without letting anyone choose their way into a favorite",
+  },
+  {
+    id: "omakase",
+    label: "Omakase",
+    icon: <OmakaseIcon />,
+    desc: "Everyone secretly dials in a mood — aggression, footprint, complexity — with no faction names in sight, and the app plates up the closest legal fit.",
+    best: "trusting the kitchen over your own faction shortlist",
   },
 ];
 

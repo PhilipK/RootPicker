@@ -31,6 +31,7 @@ export type ModeId =
   | "roulette"
   | "exile"
   | "santa"
+  | "typecast"
   | "settings";
 
 export type Tier = "new" | "comfortable" | "expert";

@@ -21,6 +21,7 @@ const MODE_IDS: ModeId[] = [
   "roulette",
   "exile",
   "santa",
+  "typecast",
   "settings",
 ];
 

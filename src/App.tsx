@@ -19,6 +19,7 @@ import { RaffleMode } from "./modes/RaffleMode";
 import { RouletteMode } from "./modes/RouletteMode";
 import { ExileDraftMode } from "./modes/ExileDraftMode";
 import { SecretSantaMode } from "./modes/SecretSantaMode";
+import { TypecastMode } from "./modes/TypecastMode";
 import { SettingsMode } from "./modes/SettingsMode";
 
 function AppShell() {
@@ -57,6 +58,7 @@ function AppShell() {
             {mode === "roulette" && <RouletteMode />}
             {mode === "exile" && <ExileDraftMode />}
             {mode === "santa" && <SecretSantaMode />}
+            {mode === "typecast" && <TypecastMode />}
             {mode === "settings" && <SettingsMode />}
           </>
         )}

@@ -202,6 +202,18 @@ function SantaIcon() {
   );
 }
 
+function TypecastIcon() {
+  // a folded secret ballot dropping into a box — anonymous nomination
+  return (
+    <svg {...strokeProps}>
+      <path d="M4 11.5 12 7l8 4.5" />
+      <rect x="4" y="11.5" width="16" height="8" rx="1.4" />
+      <path d="M9 15h6" />
+      <circle cx="17" cy="8" r="1.1" {...fillDot} />
+    </svg>
+  );
+}
+
 function GearIcon() {
   return (
     <svg {...strokeProps}>
@@ -332,6 +344,13 @@ export const GAME_MODES: ModeMeta[] = [
     icon: <SantaIcon />,
     desc: "Secretly gift a faction to the player on your left, then watch the reveal sort out any conflicts.",
     best: "tables who want to hand-pick what a friend plays, not just their own",
+  },
+  {
+    id: "typecast",
+    label: "Typecast",
+    icon: <TypecastIcon />,
+    desc: "Everyone secretly casts one faction for every other player; the app finds the legal lineup that matches the most nominations.",
+    best: "tables who already know what everyone else should play",
   },
 ];
 

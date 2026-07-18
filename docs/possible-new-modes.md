@@ -366,3 +366,79 @@ Tuning / open questions:
   to draw.
 - Burned tickets are shown live as they're drawn — the drama is the point. If
   that drags at 6 players, a "draw all" exists.
+
+## Woodland Roulette — IMPLEMENTED
+
+Now live as `src/modes/RouletteMode.tsx` (`ModeId: "roulette"`), spin/veto logic
+in `src/lib/roulette.ts`. No draft, no ranking, no bidding — just the wheel and
+one shared escape hatch.
+
+### Rules
+
+1. Shuffle seats. The app immediately spins a fully random, legal lineup
+   (reach ≥ target, A.8.1 respected, Second Vagabond excluded) and hands a
+   faction to every seat at once — no secrecy, no pass-the-device.
+2. Anyone at the table — for their own dealt faction or anyone else's — may
+   veto ONE faction from the current spin. That faction is exiled for the
+   rest of the session (it can never come back, even across re-spins), and
+   the app immediately spins a fresh lineup from whatever's left.
+3. Veto budget is one per player for the whole session, honor system only:
+   the app does not track who has vetoed or how many times, the same way it
+   never enforced "no arguing" in Simple mode. The table self-polices; the
+   Explainer says so plainly.
+4. A veto is blocked outright if it would leave no legal lineup at all for
+   this player count — the table can still see the button, but tapping it
+   surfaces why and does nothing.
+5. Once a spin goes by with nobody vetoing, anyone locks it in. Seat 0 is
+   first player — the standing convention, same call as Trading Post and
+   Potluck, since nothing about the spin process singles out one seat for
+   compensation.
+
+### Why fair
+
+Nobody chooses their faction and nobody chooses anyone else's — the wheel
+does. The only lever at the table is a shared, capped veto: purely a "no,
+not that" brake on the randomness, spendable on your own bad luck or on a
+faction you refuse to sit across from. Because vetoes are anonymous by
+design (the app never records who spent one), there's no way to build a
+grudge case out of the log — the table either trusts each other's honesty
+about the one-per-player budget or it doesn't, and that's a table problem,
+not an app one.
+
+### Why legal combinations
+
+Identical gate to Trading Post's deal and Wishlist's search: every spin
+enumerates legal `playerCount`-subsets via `combinations` (`src/lib/wish.ts`,
+reused here rather than duplicated) and picks uniformly among them, so reach
+target, A.8.1, and Second Vagabond exclusion all hold by construction on
+every spin, first or fiftieth. The veto guard is the new piece: before
+allowing an exile, simulate it and ask whether `combinations` still finds
+any legal subset of what's left. Pool is capped at 13 real factions, so this
+recomputation is instant even after several vetoes have chipped away at it.
+
+### Implementation notes
+
+`usePersistedReducer` machine (`setup → spin → done`), the simplest of any
+mode: no per-seat turns at all, since spins and vetoes are shared, standing
+information the whole table sees together. Randomness (the initial spin, and
+every re-spin after a veto) is generated in the component and injected via
+the `START`/`VETO` action payloads, keeping `spinLineup` in
+`src/lib/roulette.ts` pure and unit-tested in `src/lib/roulette.test.ts`
+(reach legality, A.8.1, Second Vagabond exclusion, and the veto-guard's
+depletion case). UI: `OrderList` shows the current seat/faction mapping,
+a `FactionCard` grid of just the current lineup doubles as the veto control
+(tap a card to veto it; blocked cards report why through
+`DisabledReasonNote`, same pattern as Cut & Choose), and an exiled-factions
+`.reveal-log` grows across spins. Reuses `Explainer`, `SetupHero`,
+`NameInputs`, `ReachStampLine`, `SummaryList`, `SetupChecklist`,
+`RevealCeremony`, `HirelingSetup`, `VagabondCharacterSetup`,
+`KnaveCaptainSetup`, and `ConfirmResetButton` — no new CSS. No house-rule
+tag: nothing here touches scoring, only how the table lands on a lineup.
+
+Deviation from the sketch: the doc's original one-line pitch didn't specify a
+UI for showing the seat/faction mapping during the spin phase; `takenBy` was
+considered (it's how Potluck and Draft show "claimed" slots) but that prop
+always pairs with `disabled` elsewhere in the codebase and would have read as
+"this card can't be tapped," which is backwards for a veto target that is
+very much tappable. `OrderList` above the grid instead, exactly the way Cut &
+Choose uses it for its turn order — a design choice, not a rules deviation.

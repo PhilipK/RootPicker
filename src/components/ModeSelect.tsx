@@ -165,6 +165,18 @@ function RaffleIcon() {
   );
 }
 
+function RouletteIcon() {
+  // a spinning wheel with a fixed pointer at the top — spin, veto, respin
+  return (
+    <svg {...strokeProps}>
+      <circle cx="12" cy="13" r="8" />
+      <path d="M12 5v8l5.2 3" />
+      <circle cx="12" cy="13" r="1.1" {...fillDot} />
+      <path d="M10.5 2.2h3L12 5z" {...fillDot} />
+    </svg>
+  );
+}
+
 function GearIcon() {
   return (
     <svg {...strokeProps}>
@@ -275,6 +287,13 @@ export const GAME_MODES: ModeMeta[] = [
     desc: "Spread ten secret tickets across the factions you want, then watch the urn draw winners one ticket at a time.",
     best: "gamblers who'd rather bet on a faction than argue for it",
   },
+  {
+    id: "roulette",
+    label: "Woodland Roulette",
+    icon: <RouletteIcon />,
+    desc: "The app spins a fully random legal lineup; anyone can veto one faction to exile it and force a re-spin.",
+    best: "groups who trust the wheel more than each other's opinions, with one shared escape hatch",
+  },
 ];
 
 export const SETTINGS_META: Pick<ModeMeta, "id" | "label" | "icon"> = {
@@ -293,7 +312,7 @@ export function ModeSelect({ onSelect }: { onSelect: (m: ModeId) => void }) {
   return (
     <section className="mode-select">
       <p className="mode-select-intro">
-        Twelve ways to seat the Woodland. Choose how your table settles on factions.
+        Thirteen ways to seat the Woodland. Choose how your table settles on factions.
       </p>
 
       <ul className="mode-grid">

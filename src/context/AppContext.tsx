@@ -3,6 +3,8 @@ import type { Faction, Tier } from "../types";
 import { availableFactions as computeAvailableFactions, effTarget as computeEffTarget } from "../lib/reach";
 import {
   useAdventurous,
+  useDutchRange,
+  useDutchTickSeconds,
   useOwnedFactionIds,
   useOwnedHirelingIds,
   useOwnedVagabondCharacterIds,
@@ -43,6 +45,12 @@ interface AppContextValue {
   raffleTicketCountIsAuto: boolean;
   setRaffleTicketCount: (n: number) => void;
   resetRaffleTicketCount: () => void;
+  /** Dutch Flower Auction: the clock runs from −dutchRange to +dutchRange VP. */
+  dutchRange: number;
+  setDutchRange: (n: number) => void;
+  /** Dutch Flower Auction: seconds between ticks of the clock. */
+  dutchTickSeconds: number;
+  setDutchTickSeconds: (n: number) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -58,6 +66,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [viewMode, setViewMode] = useViewMode();
   const [tiers, setTiers] = useTierAssignments();
   const [raffleTicketOverride, setRaffleTicketOverride] = useRaffleTicketCountOverride();
+  const [dutchRange, setDutchRange] = useDutchRange();
+  const [dutchTickSeconds, setDutchTickSeconds] = useDutchTickSeconds();
 
   const availableFactions = useMemo(() => computeAvailableFactions(ownedIds), [ownedIds]);
   const effTarget = computeEffTarget(playerCount, adventurous);
@@ -92,6 +102,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     raffleTicketCountIsAuto: raffleTicketOverride === null,
     setRaffleTicketCount: setRaffleTicketOverride,
     resetRaffleTicketCount: () => setRaffleTicketOverride(null),
+    dutchRange,
+    setDutchRange,
+    dutchTickSeconds,
+    setDutchTickSeconds,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

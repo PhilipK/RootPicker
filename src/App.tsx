@@ -11,6 +11,7 @@ import { FavBanMode } from "./modes/FavBanMode";
 import { CutChooseMode } from "./modes/CutChooseMode";
 import { RiverfolkAuctionMode } from "./modes/RiverfolkAuctionMode";
 import { BountyDraftMode } from "./modes/BountyDraftMode";
+import { DutchAuctionMode } from "./modes/DutchAuctionMode";
 import { TeachingTiersMode } from "./modes/TeachingTiersMode";
 import { WishlistMode } from "./modes/WishlistMode";
 import { PotluckDraftMode } from "./modes/PotluckDraftMode";
@@ -52,6 +53,7 @@ function AppShell() {
             {mode === "cut" && <CutChooseMode />}
             {mode === "auction" && <RiverfolkAuctionMode />}
             {mode === "bounty" && <BountyDraftMode />}
+            {mode === "dutch" && <DutchAuctionMode />}
             {mode === "tt" && <TeachingTiersMode />}
             {mode === "wish" && <WishlistMode />}
             {mode === "potluck" && <PotluckDraftMode />}

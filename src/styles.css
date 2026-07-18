@@ -451,6 +451,23 @@ input[type="text"] {
 .urn-shake { display: inline-block; }
 .urn-caption { margin: 2px 0 0; color: var(--ink-soft); font-style: italic; font-size: .95rem; }
 
+/* ---------- dutch flower auction: price clock + claim targets ---------- */
+.dutch-clock { margin: 14px 0; text-align: center; }
+.dutch-clock .stamp { font-size: 1.3rem; padding: 4px 16px; }
+.dutch-track {
+  position: relative; height: 22px; margin-top: 10px;
+  background: var(--paper-deep); border: 2px solid var(--ink); border-radius: 6px; overflow: hidden;
+}
+.dutch-track-fill { position: absolute; top: 0; bottom: 0; left: 0; width: 0; transition: width .2s linear; }
+.dutch-track-fill.bad { background: var(--danger); }
+.dutch-track-fill.adventurous { background: var(--gold); }
+.dutch-track-fill.ok { background: var(--moss); }
+.dutch-track-labels {
+  display: flex; justify-content: space-between; font-size: .78rem; color: var(--ink-soft); margin-top: 2px;
+}
+.dutch-claim-row { display: flex; flex-direction: column; gap: 10px; margin: 16px 0; }
+.dutch-claim-btn { width: 100%; font-size: 1.2rem; padding: 16px 20px; }
+
 .bounty-pile { display: flex; align-items: center; min-height: 26px; margin: 10px 0 0; }
 .bounty-coin {
   flex: none; width: 20px; height: 20px; border-radius: 50%;

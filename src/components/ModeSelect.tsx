@@ -106,6 +106,19 @@ function BountyIcon() {
   );
 }
 
+function DutchIcon() {
+  // a tulip in bloom — the Dutch flower market the auction is named for
+  return (
+    <svg {...strokeProps}>
+      <path d="M12 6c-1.8 0-3.2 1.3-3.2 3.4 0 2.4 1.6 4.1 3.2 4.1s3.2-1.7 3.2-4.1C15.2 7.3 13.8 6 12 6z" />
+      <path d="M8.8 9.4C7.3 9.7 6 9 6 9s.2 2 1.8 3" />
+      <path d="M15.2 9.4c1.5 .3 2.8-.4 2.8-.4s-.2 2-1.8 3" />
+      <path d="M12 13.5v6.5" />
+      <path d="M12 17.5c-1.3 0-2.3-.7-2.8-1.6" />
+    </svg>
+  );
+}
+
 function TeachingIcon() {
   // a graduate's mortarboard
   return (
@@ -313,6 +326,14 @@ export const GAME_MODES: ModeMeta[] = [
     icon: <BountyIcon />,
     desc: "Factions reveal one at a time. Claim the one on offer with the VP piled on it, or pass and add to the pile.",
     best: "a game of nerve over who takes the bait first",
+    houseRule: true,
+  },
+  {
+    id: "dutch",
+    label: "Dutch Flower Auction",
+    icon: <DutchIcon />,
+    desc: "One faction on the block at a time, with a price clock ticking from −4 toward +4 VP — first to tap CLAIM takes it at the price showing.",
+    best: "tables who want a live, real-time race instead of a turn order",
     houseRule: true,
   },
   {

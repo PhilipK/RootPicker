@@ -27,6 +27,7 @@ export type ModeId =
   | "cut"
   | "auction"
   | "bounty"
+  | "dutch"
   | "tt"
   | "wish"
   | "potluck"

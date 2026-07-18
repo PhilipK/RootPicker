@@ -1,6 +1,6 @@
 import { useAppContext } from "../context/AppContext";
 import { shuffleArr } from "../lib/shuffle";
-import { draftSolvable, legalIds, strongOk } from "../lib/handDraft";
+import { accumFromPicks, bannedAfter, dealHand, draftSolvable } from "../lib/handDraft";
 import { usePersistedReducer } from "../lib/persistedReducer";
 import { useEffectSkipFirst } from "../lib/useEffectSkipFirst";
 import { byId, REACH_TARGET } from "../data/factions";
@@ -26,6 +26,9 @@ interface HandPick {
 interface HandState {
   phase: "setup" | "pass" | "pick" | "done";
   seats: string[];
+  /** Pick-order indexed: hands[j] is the hand dealt to pickQueue[j]. Hands
+      append as they're dealt — one ahead of `picks` — so undo and the
+      "passed on" summary lines both stay correct. */
   hands: string[][];
   pickQueue: number[];
   picks: HandPick[];
@@ -36,9 +39,9 @@ const initialState: HandState = { phase: "setup", seats: [], hands: [], pickQueu
 
 type HandAction =
   | { type: "DEAL_ERROR"; error: string }
-  | { type: "DEAL_OK"; seats: string[]; hands: string[][]; pickQueue: number[] }
+  | { type: "START"; seats: string[]; pickQueue: number[]; firstHand: string[] }
   | { type: "SHOW" }
-  | { type: "CHOOSE"; factionId: string; playerCount: number }
+  | { type: "CHOOSE"; factionId: string; nextHand: string[] | null; playerCount: number }
   | { type: "UNDO" }
   | { type: "RESET" };
 
@@ -46,18 +49,19 @@ function handReducer(state: HandState, action: HandAction): HandState {
   switch (action.type) {
     case "DEAL_ERROR":
       return { ...state, error: action.error };
-    case "DEAL_OK":
-      return { phase: "pass", seats: action.seats, hands: action.hands, pickQueue: action.pickQueue, picks: [], error: "" };
+    case "START":
+      return { phase: "pass", seats: action.seats, hands: [action.firstHand], pickQueue: action.pickQueue, picks: [], error: "" };
     case "SHOW":
       return { ...state, phase: "pick" };
     case "CHOOSE": {
       const seatIndex = state.pickQueue[state.picks.length];
       const picks = [...state.picks, { seatIndex, factionId: action.factionId }];
-      return { ...state, picks, phase: picks.length === action.playerCount ? "done" : "pass" };
+      const hands = action.nextHand ? [...state.hands, action.nextHand] : state.hands;
+      return { ...state, picks, hands, phase: picks.length === action.playerCount ? "done" : "pass" };
     }
     case "UNDO":
       if (!state.picks.length) return state;
-      return { ...state, picks: state.picks.slice(0, -1), phase: "pass" };
+      return { ...state, picks: state.picks.slice(0, -1), hands: state.hands.slice(0, -1), phase: "pass" };
     case "RESET":
       return initialState;
   }
@@ -71,42 +75,48 @@ export function HandDraftMode() {
     if (state.phase !== "setup") dispatch({ type: "RESET" });
   }, [playerCount, availableFactions]);
 
+  const ownedDeckIds = () => availableFactions.filter((f) => f.id !== "vagabond2").map((f) => f.id);
+
   const handleDeal = () => {
-    const K = playerCount >= 5 ? 2 : 3;
-    const drop = Math.random() < 0.5 ? "vagabond" : "knaves"; // never both in one game (A.8.1)
-    const deck0 = availableFactions.filter((f) => f.id !== "vagabond2" && f.id !== drop);
+    const deckIds = ownedDeckIds();
     const target = effTarget;
-    // First hunt for a deal where every player is guaranteed a real choice
-    // (two or more legal cards) whatever happens; settle for merely solvable.
-    let fallback: string[][] | null = null;
-    for (let t = 0; t < 800; t++) {
-      const deck = shuffleArr(deck0.slice());
-      const hands = Array.from({ length: playerCount }, (_, i) => deck.slice(i * K, (i + 1) * K).map((f) => f.id));
-      if (!draftSolvable(hands, 0, false, target)) continue;
-      const handsQ = hands.slice().reverse(); // pick order: last seat first
-      if (strongOk(handsQ, 0, 0, false, target, new Map())) {
-        fallback = hands;
-        break;
-      }
-      fallback = fallback || hands;
-    }
-    if (fallback) {
-      const seats = shuffleArr(playerNames().slice());
-      const pickQueue = Array.from({ length: playerCount }, (_, i) => playerCount - 1 - i);
-      dispatch({ type: "DEAL_OK", seats, hands: fallback, pickQueue });
+    if (!draftSolvable(deckIds, playerCount, 0, false, null, target)) {
+      dispatch({ type: "DEAL_ERROR", error: "Couldn’t deal hands that reach the total — try the adventurous toggle." });
       return;
     }
-    dispatch({ type: "DEAL_ERROR", error: "Couldn’t deal hands that reach the total — try the adventurous toggle." });
+    const seats = shuffleArr(playerNames().slice());
+    const pickQueue = Array.from({ length: playerCount }, (_, i) => playerCount - 1 - i);
+    const firstHand = dealHand(deckIds, playerCount, 0, false, null, target, shuffleArr);
+    dispatch({ type: "START", seats, pickQueue, firstHand });
+  };
+
+  /** Compute the next player's hand just-in-time, right after the current
+      player's choice — the reducer stays pure; all randomness (which safe
+      candidates get shown, in what order) is injected here via `shuffleArr`
+      and carried into the dispatched action. */
+  const handleChoose = (factionId: string) => {
+    const pickedIds = [...state.picks.map((p) => p.factionId), factionId];
+    const playersRemaining = playerCount - pickedIds.length;
+    let nextHand: string[] | null = null;
+    if (playersRemaining > 0) {
+      const pool = ownedDeckIds().filter((id) => !pickedIds.includes(id));
+      const { sum, mil } = accumFromPicks(pickedIds);
+      const banned = bannedAfter(pickedIds);
+      nextHand = dealHand(pool, playersRemaining, sum, mil, banned, effTarget, shuffleArr);
+    }
+    dispatch({ type: "CHOOSE", factionId, nextHand, playerCount });
   };
 
   if (state.phase === "setup") {
     return (
       <section>
         <Explainer id="exp-hand-deal" summary="How this works">
-          Each player gets a secret hand of <span>{playerCount >= 5 ? "two" : "three"}</span> factions and picks
-          one, passing the device around. Hands are dealt so the table can always reach the required total and
-          field at least one militant. The Second Vagabond sits out, and either the Vagabond or the Knaves is
-          randomly left out of the deck (A.8.1).
+          Each player gets a secret hand of <span>three</span> factions and picks one, passing the device around.
+          Hands are dealt just-in-time — one player at a time, right before their turn — so every card you see is
+          guaranteed pickable: whichever one you take, the table can still reach the required total and field at
+          least one militant. Nothing is ever hidden or apologized for. The Second Vagabond sits out. The Vagabond
+          and the Knaves can both turn up while neither has been picked yet, but the moment one is taken the other
+          is retired from every hand dealt for the rest of the draft (A.8.1).
         </Explainer>
         <SetupHero />
         <h2>Seats</h2>
@@ -147,19 +157,9 @@ export function HandDraftMode() {
     const seat = state.pickQueue[qi];
     const actorName = state.seats[seat];
     const actorKey = `hand-${qi}`;
-
-    const handsQ = state.pickQueue.map((si) => state.hands[si]);
-    const sum = state.picks.reduce((s, p) => s + byId[p.factionId].reach, 0);
-    const mil = state.picks.some((p) => byId[p.factionId].type === "militant");
-    const target = effTarget;
-    const legal = legalIds(handsQ, qi, sum, mil, target);
-    // Prefer picks that leave every later player two or more legal cards.
-    const strong = legal.filter((id) => {
-      const f = byId[id];
-      return strongOk(handsQ, qi + 1, sum + f.reach, mil || f.type === "militant", target, new Map());
-    });
-    const shown = strong.length ? strong : legal;
-    const hiddenCount = state.hands[seat].length - shown.length;
+    // Dealt just-in-time for this exact turn: every card in it is already
+    // guaranteed pickable, so it's shown as-is — nothing to filter or hide.
+    const hand = state.hands[qi];
 
     return (
       <PassDeviceGate
@@ -193,30 +193,16 @@ export function HandDraftMode() {
           </div>
           <GridLegend />
           <div className="grid">
-            {shown.map((id) => {
+            {hand.map((id) => {
               const f = byId[id];
               return (
-                <FactionCard
-                  key={id}
-                  faction={f}
-                  reachBadge
-                  onClick={() => dispatch({ type: "CHOOSE", factionId: id, playerCount })}
-                />
+                <FactionCard key={id} faction={f} reachBadge onClick={() => handleChoose(id)} />
               );
             })}
           </div>
-          <p className="note" style={{ color: "var(--danger)" }}>
-            {hiddenCount
-              ? `${hiddenCount === 1 ? "One dealt faction is" : hiddenCount + " dealt factions are"} hidden: picking ${
-                  hiddenCount === 1 ? "it" : "them"
-                } would leave the table short on reach or militants, or leave a later player with no real choice. ${
-                  hiddenCount === 1 ? "It shows up" : "They show up"
-                } in the reveal at the end.`
-              : ""}
-          </p>
           <p className="note">
-            Pick one — it becomes public and you set it up right away. The rest of your hand stays secret until the
-            end.
+            Pick one — every card here is guaranteed pickable. It becomes public and you set it up right away. The
+            rest of your hand stays secret until the end.
           </p>
         </section>
       </PassDeviceGate>
@@ -230,7 +216,8 @@ export function HandDraftMode() {
   const summaryItems: SummaryItem[] = state.seats.map((name, i) => {
     const pick = state.picks.find((p) => p.seatIndex === i)!;
     const f = byId[pick.factionId];
-    const passed = state.hands[i].filter((id) => id !== pick.factionId).map((id) => byId[id].name);
+    const hand = state.hands[state.pickQueue.indexOf(i)];
+    const passed = hand.filter((id) => id !== pick.factionId).map((id) => byId[id].name);
     return {
       img: `assets/factions/${f.img ?? f.id}.png`,
       primary: (

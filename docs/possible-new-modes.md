@@ -366,3 +366,99 @@ Tuning / open questions:
   to draw.
 - Burned tickets are shown live as they're drawn — the drama is the point. If
   that drags at 6 players, a "draw all" exists.
+
+## Hand Draft — Just-in-Time Dealing — IMPLEMENTED
+
+Revises `src/modes/HandDraftMode.tsx` and `src/lib/handDraft.ts`. The original
+Hand Draft dealt every hand upfront, then had to hide any dealt card whose
+pick would strand the table — a dealt-but-unpickable card, apologized for in
+a red note and revealed only at the end. This revision deals each hand
+just-in-time, one player at a time, right before their turn, so every card a
+player is ever shown is already guaranteed pickable. Nothing is hidden and
+nothing needs an apology note.
+
+### Rules
+
+1. Shuffle seats, same as before. Pick order is reverse seat order (last
+   seat picks first, seat 0 picks last and starts the game) — unchanged.
+2. Before dealing anything, check that the *entire* draft is solvable from
+   the full owned deck (reach ≥ target, at least one militant, for
+   `playerCount` more picks). If not, the same "Couldn't deal hands" error as
+   before, with the same adventurous-toggle suggestion.
+3. Deal the first player a hand of three factions, drawn at random from
+   whichever cards in the deck are individually safe — i.e. picking that
+   card still leaves a solvable draft for everyone left to pick. Every hand
+   is capped at three cards, at every player count, including 5–6 players
+   (previously cut to two there for deck-size reasons — see "Recycling").
+4. The player picks one card from their hand; it's revealed immediately. The
+   two cards they didn't take are not removed from the pool — they simply
+   remain candidates for later hands.
+5. Right after that pick, deal the *next* player's hand from the pool minus
+   only the cards actually picked so far, using the same safety check. Repeat
+   until everyone has picked.
+6. A.8.1 is enforced dynamically instead of by a coin-flip exclusion at the
+   start: the Vagabond and the Knaves can both appear as candidates in the
+   same hand (or in different players' hands) as long as neither has been
+   picked yet. The instant one is picked, the other is permanently excluded
+   from every hand dealt for the rest of that draft. The Second Vagabond
+   still sits out entirely, unchanged from before.
+
+### Why fair
+
+Unchanged from the original: a secret hand with one guaranteed take is a
+softer commitment than an open draft pick, and passing the device keeps
+choices private until the reveal. What changes is honesty — the old version
+occasionally handed a player a hand where one of their three cards was
+"there but you can't have it," flagged after the fact. Every card a player
+sees now really is theirs to take.
+
+### Why legal combinations
+
+The core guarantee — "a hand is only dealt if every card in it keeps the
+remaining draft solvable" — is a memoized recursive check,
+`draftSolvable` in `src/lib/handDraft.ts`: given the undealt pool and however
+many players are left, does at least one legal continuation exist that
+reaches target with a militant? `safeCandidates` filters the pool down to
+cards that pass this check individually; `dealHand` shuffles that filtered
+set and takes three. Because recycling means the pool only ever shrinks by
+exactly one card per turn (the actually-picked one — offered-but-unpicked
+cards stay in play), the recursion's state is just the remaining pool plus
+how many picks are left, which keeps the memo small (pool ⊆ 13 factions,
+depth ≤ 6). A.8.1 is folded into the same recursion via a `banned` flag that
+flips the moment Vagabond or Knaves is picked, so it's enforced by
+construction rather than by a pre-deal coin flip.
+
+**Recycling and 5–6 players.** The old dealer partitioned the deck into fixed
+hands upfront — `playerCount × handSize` cards had to fit in the ~12-card
+deck (after excluding one of Vagabond/Knaves), which is why 5–6 players got
+two-card hands instead of three. Because the just-in-time dealer only
+consumes one card per turn no matter how large the *shown* hand is (the
+other two candidates just go back in the pool for later turns), the deck
+only needs to be ≥ `playerCount` cards deep, not `playerCount × 3` — so
+three-card hands are restored at every player count, including 5 and 6.
+
+### Implementation notes
+
+Same `usePersistedReducer` machine and phases (`setup → pass → pick → done`)
+and the same UI shell (`PassDeviceGate`, `OrderList`, `FactionCard` grid,
+`SummaryList` + `SetupChecklist` + hireling/character setup steps at the
+end) — this is a logic revision, not a UI rewrite. `HandState.hands` is now
+pick-order indexed and appended to one entry at a time: dealing the first
+hand happens in the `START` action (fired once, from `setup`), and each
+subsequent hand is computed by the component in `handleChoose` — using
+`dealHand` with `shuffleArr` for randomness — and carried into the `CHOOSE`
+action's payload, so the reducer itself stays a pure append; `UNDO` pops the
+last pick and the one hand dealt after it, symmetrically. The "passed on"
+summary line looks up each seat's hand via `pickQueue.indexOf(seatIndex)`
+instead of a direct seat-indexed array, since hands are now indexed by pick
+order rather than seat order. `src/lib/handDraft.test.ts` covers: every
+dealt card stays legal across a full simulated draft at every player count;
+the militant guarantee always holds at the end; A.8.1 both allows
+Vagabond+Knaves in one hand pre-pick and bans the loser dynamically once one
+is taken; 3-card hands hold at 5 and 6 players; and the upfront feasibility
+check on the full owned deck.
+
+No deviations from the sketch as specified — the implementation matches the
+spec's dealer design (memoized recursive solvability check, shared pool with
+implicit recycling, dynamic A.8.1 guard, pick-order-indexed appended hands)
+as given.

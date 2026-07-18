@@ -30,6 +30,7 @@ export type ModeId =
   | "raffle"
   | "roulette"
   | "exile"
+  | "santa"
   | "settings";
 
 export type Tier = "new" | "comfortable" | "expert";

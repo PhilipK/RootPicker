@@ -189,6 +189,19 @@ function ExileIcon() {
   );
 }
 
+function SantaIcon() {
+  // a wrapped gift box with a bow — passed to the neighbor, not kept
+  return (
+    <svg {...strokeProps}>
+      <rect x="4" y="10" width="16" height="10" rx="1.4" />
+      <path d="M4 14h16" />
+      <path d="M12 10v10" />
+      <path d="M12 10c-2.2 0-3.4-1.1-3.4-2.6 0-1.2.9-2 2-2 1.3 0 1.9 1.1 1.4 2.6" />
+      <path d="M12 10c2.2 0 3.4-1.1 3.4-2.6 0-1.2-.9-2-2-2-1.3 0-1.9 1.1-1.4 2.6" />
+    </svg>
+  );
+}
+
 function GearIcon() {
   return (
     <svg {...strokeProps}>
@@ -312,6 +325,13 @@ export const GAME_MODES: ModeMeta[] = [
     icon: <ExileIcon />,
     desc: "Nobody picks — everyone bans down the shared pool in turn, then the app deals a random legal lineup from what survives.",
     best: "tables who trust the dice more than each other's picks",
+  },
+  {
+    id: "santa",
+    label: "Secret Santa",
+    icon: <SantaIcon />,
+    desc: "Secretly gift a faction to the player on your left, then watch the reveal sort out any conflicts.",
+    best: "tables who want to hand-pick what a friend plays, not just their own",
   },
 ];
 

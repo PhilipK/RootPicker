@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAppContext } from "../context/AppContext";
 import { shuffleArr } from "../lib/shuffle";
-import { spinLineup, vetoBlockReason } from "../lib/roulette";
+import { drawReplacement, nextUnspentSeat, spinLineup, vetoBlockReason } from "../lib/roulette";
 import { usePersistedReducer } from "../lib/persistedReducer";
 import { useEffectSkipFirst } from "../lib/useEffectSkipFirst";
 import { byId, REACH_TARGET } from "../data/factions";
@@ -22,14 +22,20 @@ import { VagabondCharacterSetup } from "../components/VagabondCharacterSetup";
 import { KnaveCaptainSetup } from "../components/KnaveCaptainSetup";
 
 interface RouletteState {
-  phase: "setup" | "spin" | "done";
+  phase: "setup" | "poll" | "done";
   seats: string[];
   /** faction ids banished for the rest of this session by a veto */
   exiled: string[];
   /** the current proposal: lineup[seatIndex] = faction id */
   lineup: string[];
-  /** how many times the table has vetoed and re-spun — flavor/counter only */
+  /** proposal counter — bumps on every veto (each veto changes one seat) */
   spins: number;
+  /** per seat: has this player spent their one veto? */
+  vetoSpent: boolean[];
+  /** seat indices that passed on the current proposal */
+  passed: number[];
+  /** seat index currently deciding veto-or-pass; -1 when nobody is left */
+  decider: number;
   error: string;
 }
 
@@ -39,31 +45,70 @@ const initialState: RouletteState = {
   exiled: [],
   lineup: [],
   spins: 0,
+  vetoSpent: [],
+  passed: [],
+  decider: -1,
   error: "",
 };
+
+/** Older persisted sessions predate the veto-or-pass poll (no `decider`
+    field) — treat them as no session rather than crash on the new shape. */
+function deserialize(raw: string): RouletteState {
+  const parsed = JSON.parse(raw) as RouletteState;
+  return typeof parsed.decider === "number" && Array.isArray(parsed.vetoSpent) ? parsed : initialState;
+}
 
 type RouletteAction =
   | { type: "START"; seats: string[]; lineup: string[] }
   | { type: "ERROR"; error: string }
-  | { type: "VETO"; id: string; lineup: string[] }
-  | { type: "LOCK" }
+  | { type: "VETO"; id: string; replacement: string }
+  | { type: "PASS" }
   | { type: "RESET" };
 
 function rouletteReducer(state: RouletteState, action: RouletteAction): RouletteState {
   switch (action.type) {
-    case "START":
-      return { ...initialState, phase: "spin", seats: action.seats, lineup: action.lineup, spins: 1 };
+    case "START": {
+      const vetoSpent = action.seats.map(() => false);
+      return {
+        ...initialState,
+        phase: "poll",
+        seats: action.seats,
+        lineup: action.lineup,
+        spins: 1,
+        vetoSpent,
+        decider: nextUnspentSeat(vetoSpent, -1),
+      };
+    }
     case "ERROR":
       return { ...state, error: action.error };
-    case "VETO":
+    case "VETO": {
+      if (state.decider < 0) return state;
+      const vetoSpent = state.vetoSpent.map((v, i) => (i === state.decider ? true : v));
+      const lineup = state.lineup.map((id) => (id === action.id ? action.replacement : id));
+      // A changed proposal is a new question — everyone still holding a
+      // token gets a fresh say, starting from the lowest seat.
+      const decider = nextUnspentSeat(vetoSpent, -1);
       return {
         ...state,
+        phase: decider === -1 ? "done" : "poll",
         exiled: [...state.exiled, action.id],
-        lineup: action.lineup,
+        lineup,
         spins: state.spins + 1,
+        vetoSpent,
+        passed: [],
+        decider,
       };
-    case "LOCK":
-      return { ...state, phase: "done" };
+    }
+    case "PASS": {
+      if (state.decider < 0) return state;
+      const decider = nextUnspentSeat(state.vetoSpent, state.decider);
+      return {
+        ...state,
+        phase: decider === -1 ? "done" : "poll",
+        passed: [...state.passed, state.decider],
+        decider,
+      };
+    }
     case "RESET":
       return initialState;
   }
@@ -71,7 +116,13 @@ function rouletteReducer(state: RouletteState, action: RouletteAction): Roulette
 
 export function RouletteMode() {
   const { playerCount, availableFactions, playerNames, adventurous, setAdventurous, effTarget } = useAppContext();
-  const [state, dispatch] = usePersistedReducer("rootpicker.session.roulette", rouletteReducer, initialState);
+  const [state, dispatch] = usePersistedReducer(
+    "rootpicker.session.roulette",
+    rouletteReducer,
+    initialState,
+    JSON.stringify,
+    deserialize,
+  );
   const [tapReason, setTapReason] = useState<string | null>(null);
 
   const roulettePool = availableFactions.filter((f) => f.id !== "vagabond2");
@@ -95,30 +146,27 @@ export function RouletteMode() {
   const exiledSet = new Set(state.exiled);
 
   const handleVeto = (id: string) => {
-    const reason = vetoBlockReason(roulettePool, exiledSet, id, playerCount, effTarget);
+    const reason = vetoBlockReason(roulettePool, exiledSet, state.lineup, id, effTarget);
     if (reason) {
       setTapReason(reason);
       return;
     }
-    const nextExiled = new Set(exiledSet);
-    nextExiled.add(id);
-    const remainingPool = roulettePool.filter((f) => !nextExiled.has(f.id));
-    const lineup = spinLineup(remainingPool, playerCount, effTarget);
-    // vetoBlockReason already guarantees a legal lineup exists after this
-    // exile, so `lineup` is never null here.
-    dispatch({ type: "VETO", id, lineup: lineup! });
+    const replacement = drawReplacement(roulettePool, exiledSet, state.lineup, id, effTarget);
+    // vetoBlockReason already guarantees at least one legal replacement, so
+    // `replacement` is never null here.
+    dispatch({ type: "VETO", id, replacement: replacement! });
   };
 
   if (state.phase === "setup") {
     return (
       <section>
         <Explainer id="exp-roulette" summary="How this works">
-          The app spins a fully random, reach-safe lineup and hands it straight to the seats. Anyone at the table —
-          for their own faction or someone else's — can veto <b>one</b> faction from the current spin: it's exiled
-          for the rest of the session and the app spins a fresh lineup from what's left. Everyone gets one veto to
-          spend across the whole session, honor system — the app doesn't track who's used theirs, so the table
-          polices it itself. A veto is blocked outright if it would leave no legal lineup at all. Once a spin goes
-          by with nobody vetoing, lock it in. Nothing about scoring changes; the only lever anyone has is exiling
+          The app spins a fully random, reach-safe lineup, then polls the table seat by seat: on your turn either
+          <b> pass</b> — this lineup is fine by you — or spend your <b>one veto</b> on any faction in it, yours or
+          someone else's. A vetoed faction is exiled for the rest of the session and <b>only that seat</b> draws a
+          fresh faction; everyone else keeps theirs. Any veto restarts the poll on the new proposal. When everyone
+          still holding a veto has passed — or nobody has one left — the lineup locks. A veto is blocked if no
+          faction could legally take that seat. Nothing about scoring changes; the only lever anyone has is exiling
           what they refuse to see at the table.
         </Explainer>
         <SetupHero />
@@ -144,35 +192,45 @@ export function RouletteMode() {
   const total = state.lineup.reduce((s, id) => s + byId[id].reach, 0);
   const rec = REACH_TARGET[playerCount];
 
-  if (state.phase === "spin") {
-    const orderItems: OrderItem[] = state.seats.map((name, i) => ({
-      name,
-      first: i === 0,
-      current: false,
-      done: false,
-      who: byId[state.lineup[i]].name,
-    }));
+  if (state.phase === "poll") {
+    const deciderName = state.seats[state.decider];
+    const orderItems: OrderItem[] = state.seats.map((name, i) => {
+      const status = state.vetoSpent[i]
+        ? "veto spent"
+        : state.passed.includes(i)
+          ? "passed"
+          : i === state.decider
+            ? "veto or pass"
+            : "waiting";
+      return {
+        name,
+        first: i === 0,
+        current: i === state.decider,
+        done: state.vetoSpent[i] || state.passed.includes(i),
+        who: `${byId[state.lineup[i]].name} · ${status}`,
+      };
+    });
 
     return (
       <section>
         <div className="picker-banner">
-          Spin <b>#{state.spins}</b> — tap a faction below to <b>veto</b> it (exiled for the rest of the session, and
-          the app re-spins). Happy with this one? Lock it in.
+          Proposal <b>#{state.spins}</b> — <b>{deciderName}</b>: tap a faction to <b>veto</b> it (exiled for the
+          session, that seat redraws), or pass.
         </div>
         <OrderList items={orderItems} />
         <ReachStampLine total={total} recommended={rec} />
         <GridLegend />
         <div className="grid">
-          {state.lineup.map((id) => {
+          {state.lineup.map((id, i) => {
             const f = byId[id];
-            const reason = vetoBlockReason(roulettePool, exiledSet, id, playerCount, effTarget);
+            const reason = vetoBlockReason(roulettePool, exiledSet, state.lineup, id, effTarget);
             return (
               <FactionCard
                 key={id}
                 faction={f}
                 reachBadge
                 disabled={!!reason}
-                title={reason ? reason : "Tap to veto — exiled for the rest of the session"}
+                title={reason ? reason : `Tap to veto — exiled for the session, ${state.seats[i]}'s seat redraws`}
                 onDisabledTap={reason ? () => setTapReason(reason) : undefined}
                 onClick={() => handleVeto(id)}
               />
@@ -193,8 +251,8 @@ export function RouletteMode() {
           </>
         )}
         <div className="btn-row">
-          <button className="btn" onClick={() => dispatch({ type: "LOCK" })}>
-            Lock this lineup in
+          <button className="btn" onClick={() => dispatch({ type: "PASS" })}>
+            {deciderName} passes — fine by me
           </button>
           <ConfirmResetButton onConfirm={() => dispatch({ type: "RESET" })}>Start over</ConfirmResetButton>
         </div>
@@ -214,7 +272,7 @@ export function RouletteMode() {
           {name} — {f.name}
         </>
       ),
-      sub: `reach ${f.reach} · ${f.type}${state.spins > 1 ? ` · settled after ${state.spins} spins` : ""}`,
+      sub: `reach ${f.reach} · ${f.type}${state.spins > 1 ? ` · settled after ${state.spins} proposals` : ""}`,
     };
   });
   const revealItems: RevealSeatItem[] = state.seats.map((name, i) => ({

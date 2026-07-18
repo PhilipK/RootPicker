@@ -1,5 +1,6 @@
 import { combinations } from "./wish";
 import { shuffleArr } from "./shuffle";
+import { byId } from "../data/factions";
 import type { Faction } from "../types";
 
 /** Reach + A.8.1 legality for one candidate subset — the same rule every
@@ -29,9 +30,8 @@ export function hasLegalLineup(pool: Faction[], playerCount: number, target: num
   return legalLineups(pool, playerCount, target).length > 0;
 }
 
-/** One spin: pick uniformly among the legal subsets of `pool`, then shuffle
-    who gets what. Null means the pool can no longer field a legal table —
-    should only happen if a caller ignores a blocked veto. */
+/** The opening spin: pick uniformly among the legal subsets of `pool`, then
+    shuffle who gets what. Null means the pool can't field a legal table. */
 export function spinLineup(pool: Faction[], playerCount: number, target: number): string[] | null {
   const legal = legalLineups(pool, playerCount, target);
   if (!legal.length) return null;
@@ -39,20 +39,58 @@ export function spinLineup(pool: Faction[], playerCount: number, target: number)
   return shuffleArr(subset.map((f) => f.id));
 }
 
-/** Would exiling `id` — on top of whatever's already exiled this session —
-    leave zero legal lineups? The spec's guard: "veto blocked if it would
-    leave no legal lineup." Vetoing budgets (1 per player) are honor-system
-    only and never checked here — this is the one guard the app enforces. */
+/** Factions that could take the vetoed seat: not exiled, not already at the
+    table, and keeping the (otherwise unchanged) lineup reach-safe and
+    A.8.1-safe. A veto swaps one seat's faction; the other seats keep theirs. */
+export function replacementOptions(
+  pool: Faction[],
+  exiled: ReadonlySet<string>,
+  lineup: readonly string[],
+  vetoId: string,
+  target: number,
+): Faction[] {
+  const kept = lineup.filter((id) => id !== vetoId).map((id) => byId[id]);
+  return candidatePool(pool).filter(
+    (f) =>
+      f.id !== vetoId &&
+      !exiled.has(f.id) &&
+      !lineup.includes(f.id) &&
+      isLegalSubset([...kept, f], target),
+  );
+}
+
+/** Would vetoing `id` leave its seat with no legal replacement? The one
+    guard the app enforces on a veto; budgets are enforced by the poll. */
 export function vetoBlockReason(
   pool: Faction[],
   exiled: ReadonlySet<string>,
+  lineup: readonly string[],
   id: string,
-  playerCount: number,
   target: number,
 ): string | null {
-  const remaining = pool.filter((f) => f.id !== id && !exiled.has(f.id));
-  if (!hasLegalLineup(remaining, playerCount, target)) {
-    return "Vetoing this would leave no legal lineup for this table — lock this one in instead";
+  if (replacementOptions(pool, exiled, lineup, id, target).length === 0) {
+    return "No exiled-free faction could take this seat without leaving the table short — pass instead";
   }
   return null;
+}
+
+/** Draw a uniform random legal replacement for the vetoed seat. Null only if
+    the caller ignored a blocked veto. */
+export function drawReplacement(
+  pool: Faction[],
+  exiled: ReadonlySet<string>,
+  lineup: readonly string[],
+  vetoId: string,
+  target: number,
+): string | null {
+  const options = replacementOptions(pool, exiled, lineup, vetoId, target);
+  if (!options.length) return null;
+  return options[Math.floor(Math.random() * options.length)].id;
+}
+
+/** Next seat index after `after` whose veto is unspent, or -1 when nobody
+    with a token is left to poll. Pass -1 as `after` to scan from seat 0. */
+export function nextUnspentSeat(vetoSpent: readonly boolean[], after: number): number {
+  for (let i = after + 1; i < vetoSpent.length; i++) if (!vetoSpent[i]) return i;
+  return -1;
 }

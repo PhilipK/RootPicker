@@ -375,8 +375,8 @@ export const GAME_MODES: ModeMeta[] = [
     id: "roulette",
     label: "Woodland Roulette",
     icon: <RouletteIcon />,
-    desc: "The app spins a fully random legal lineup; anyone can veto one faction to exile it and force a re-spin.",
-    best: "groups who trust the wheel more than each other's opinions, with one shared escape hatch",
+    desc: "The app spins a random legal lineup, then seats vote in turn: pass, or spend your one veto to exile a faction and redraw just that seat.",
+    best: "groups who trust the wheel more than each other's opinions, with one escape hatch each",
   },
   {
     id: "exile",

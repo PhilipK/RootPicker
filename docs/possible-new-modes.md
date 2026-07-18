@@ -1,201 +1,79 @@
 # Possible New Modes
 
-Design sketches for picker modes not yet implemented. Existing modes for reference:
-Simple (free pick), Draft (Law A.8.3), Hand draft, Fav/Ban, Cut & Choose, Teaching
-Tiers, Wishlist optimizer.
+Design sketches for picker modes not yet implemented. Sketches graduate out of
+this file when they ship (see git history for the implemented ones). Existing
+modes for reference: Simple (free pick), Draft (Law A.8), Hand Draft, Fav/Ban,
+Cut & Choose, Riverfolk Auction, Bounty Draft, Teaching Tiers, Wishlist,
+Potluck Draft, Trading Post, Woodland Raffle.
 
-## Potluck Draft — IMPLEMENTED
+## Hand Draft — Just-in-Time Dealing (revision)
 
-Now live as `src/modes/PotluckDraftMode.tsx` (`ModeId: "potluck"`), guard logic in
-`src/lib/potluck.ts`. Everyone brings a faction to the table; nobody plays the
-one they brought.
+Revision to the implemented Hand Draft (`src/modes/HandDraftMode.tsx`): make
+every card in your hand guaranteed pickable — what you see is what you can
+get. Today the last picker usually faces one or two real options plus an
+apology note.
 
-### Rules
+### The problem
 
-1. Shuffle seats, as in every other mode. In seat order, each player adds ONE
-   faction to a shared pool — open information, the pool builds where
-   everyone can see it. Contributions are gated by `reachBlockReason`
-   (`src/lib/reach.ts`) exactly like Simple mode picks, so the final pool of
-   `playerCount` factions always meets the reach target (or 17+ for
-   adventurous groups). Vagabond/Knaves exclusion (A.8.1) and Second Vagabond
-   gating come free from the same function. Standard adventurous checkbox in
-   setup.
-2. Once the pool is full, picking happens in REVERSE seat order — last
-   contributor picks first. Each player takes one faction from the pool, with
-   a single rule: never the one they themselves contributed.
-3. Deadlock guard: with "not your own" as the only per-player constraint, the
-   only way to get stuck is a picker being left with only their own
-   contribution. The app blocks any pick that would leave *any* later picker
-   in that spot, not just the very last one — see "Why legal combinations."
-4. Whoever picks last goes first in the actual game, same compensation as
-   Advanced Draft and Teaching Tiers. Because pick order is the exact reverse
-   of seat order, "picks last" is always seat 0 — which is already the app's
-   standing convention for "first player," so no extra bookkeeping is needed.
-5. Two players is a forced swap: you play what they brought, they play what
-   you brought. Nothing to guard against — it's just the only arrangement two
-   people can make — so the Explainer notes it with a wink instead of
-   blocking it.
+The current dealer deals all hands upfront, disjoint, by random shuffle
+(`handleDeal` tries 800 shuffles), hunting for a deal where every player
+keeps at least two legal cards (`strongOk` in `src/lib/handDraft.ts`) and
+settling for merely solvable when the hunt fails. Pick-time filtering then
+hides any card that would strand the table on reach or militants — and the
+last picker inherits every accumulated constraint.
 
-### Why fair
+Keeping upfront hands and demanding all three cards always legal is
+possible but poisonous: "every card always pickable" means every
+one-card-per-hand combination must reach the target with a militant, which
+forces (a) one hand of only militants — otherwise an all-insurgent
+selection exists — and (b) the sum of each hand's weakest card to reach
+the target. At 4 players that's 21 from four minima against a pool of
+reaches 10,9,8,8,7,7,5,4,3,3,2, so the low cards must cluster: {Lizard
+Cult, Woodland Alliance, Corvids} as a near-fixed hand, deal after deal.
+The guarantee would be bought with stratified, repetitive hands.
 
-Contributing is preference expression with consequences: you'll never play
-what you bring, so the honest move is to bring something you'd enjoy
-*facing*, or something you want someone else at the table to try — not your
-comfort pick. Picking first compensates for contributing last: seat N (last
-to add to the pool, so the one reacting to the fullest picture of it) also
-picks first. The real turn-order compensation, though, is the game-order
-reversal in rule 4 — the seat that picks last (always seat 0, by
-construction) starts the actual game, offsetting whatever edge picking last
-in the draft cost them.
+### The fix
 
-### Why legal combinations
+Deal each hand at the player's turn, from the undealt pool, admitting only
+cards that pass "if this gets picked, every later player can still be
+dealt a full all-legal hand" — a memoized recursion, same shape as
+`strongOk`, but building hands adaptively instead of checking fixed ones.
+The dealer reacts to actual picks: early high-reach picks buy later hands
+room for low-reach spice, and the worst case that forces tiered hands
+upfront never gets locked in.
 
-Contribute-phase gating is identical to Simple mode: `reachBlockReason` on
-every addition, so the final pool always hits the Law 5.2 total by
-construction, with Vagabond/Knaves and Second Vagabond handled for free.
+For players nothing visible changes: same pass-the-device flow, same
+secret hand, but every card shown is truly on offer and nothing is ever
+hidden. Bonuses:
 
-Pick-phase legality is a different problem: reach is no longer at stake (the
-pool is already a fixed legal set of `playerCount` factions), the only rule
-is "not your own." The one way to break that is a bad earlier pick stranding
-a later picker with nothing but their own contribution — and this isn't only
-possible at the very last seat. `src/lib/potluck.ts` exports
-`hasCompleteMatching`, a small bipartite-matching check (Kuhn's algorithm):
-before allowing a candidate pick, simulate removing it and ask whether the
-*remaining* pickers can still be matched to the *remaining* pool with nobody
-stuck with their own faction. The pool is capped at 6 factions, so this is
-trivially cheap, and it subsumes the hard-coded "last picker" case rather
-than special-casing it — it also catches a stranding two turns out (a
-3-remaining choice that dooms the picker after next), which a check that
-only looked at the final seat would miss. `src/lib/potluck.test.ts` builds
-exactly such a 2-remaining scenario.
-
-### Implementation notes
-
-`usePersistedReducer` state machine (`setup → contribute → pick → done`).
-UI: `NameInputs` for setup, `OrderList` for both the contribute and pick
-turn orders (unified "up now" / "turn N" wording), a `FactionCard` grid for
-both phases — contribute-phase cards show `takenBy` once claimed by the
-pool, pick-phase cards are `dimmed`/`disabled` with a `title` reason from
-`pickBlockReason` when blocked — then `SummaryList` + `SetupChecklist` +
-`ReachStampLine` at the end, each summary line noting what that seat
-brought alongside what they ended up playing. No new CSS; reuses `.grid`,
-`.picker-banner`, `.order-list`, `.btn` etc. No house-rule tag: unlike
-Bounty/Auction, nothing here adjusts scoring — it only changes who ends up
-with which (already-legal) faction, the same basis Hand Draft/Fav-Ban/Cut &
-Choose/Teaching Tiers are judged on.
-
-## Bounty Draft — IMPLEMENTED
-
-Now live as `src/modes/BountyDraftMode.tsx` (`ModeId: "bounty"`), turn logic in
-`src/lib/bounty.ts`. Sketch kept for the rationale. Two deltas from the sketch
-below: token count is `playerCount` (not a flat 3), and unspent tokens bank as
-VP for every claim, not just the last — so final totals are normalized to a
-0 floor (lowest total becomes 0) since only the gap between players matters.
-
-"No Thanks!"-style auction. The table prices faction strength and preference live,
-instead of anyone arguing about balance.
-
-### Rules
-
-1. Shuffle seats, random first player. App builds a face-down deck from owned
-   factions (Second Vagabond excluded, as in Hand draft).
-2. App reveals one faction. Starting with the last player in turn order, each
-   remaining player either:
-   - **Claim** — take the faction plus all bounty VP on it (start the game with
-     that many VP), and leave the draft.
-   - **Pass** — spend 1 of 3 personal bounty tokens, adding +1 VP bounty to the
-     faction. Out of tokens = must claim.
-3. A faction circulates until claimed; it is never discarded. Then the next
-   faction is revealed for the remaining players. The last player claims the
-   final reveal and keeps unspent tokens as VP.
-
-Termination is guaranteed by the token economy: each pass costs a token, tokens
-are finite, and a player with 0 tokens must claim on their turn. Worst case all
-remaining players pass until broke and the next in rotation is forced to take
-it — with a large bounty attached, which is the compensation working as intended.
-
-### Why fair
-
-Self-pricing market. A strong faction gets claimed at 0 bounty instantly; a weak
-or disliked one circulates and accumulates VP until someone finds the price worth
-it. It prices *preference* too: the player who loves the Lizard Cult claims it
-early and cheap, while a player forced onto it gets compensated. Unlike Cut &
-Choose, no single player carries the lineup-balance burden.
+- 5–6 players get 3-card hands back (currently cut to 2 because 6×3
+  exceeds the 13-faction pool): unpicked cards recycle into later hands.
+- The "N dealt factions are hidden" note and its information leak vanish.
+- The upfront random Vagabond-or-Knaves drop becomes unnecessary: the
+  guard simply never deals the Knaves once the Vagabond is picked and vice
+  versa (before either is picked they can even share a hand — only one can
+  be picked from it). Richer effective pool.
 
 ### Why legal combinations
 
-The reveal filter reuses `reachBlockReason` (`src/lib/reach.ts`): a faction only
-enters the reveal pool if claimed-set + it + best remaining can still hit
-`effTarget`. The invariant holds after every claim, so the final table always
-reaches the Law 5.2 total. Vagabond/Knaves exclusion (A.8.1) and Second Vagabond
-gating come free from the same function. The Adventurous 17+ checkbox works
-unchanged.
-
-Caveat for the Explainer: the starting-VP bounty is a house rule, not from the
-Law — same precedent as Wishlist mode's +1 VP suggestion.
+The induction moves from pick time to deal time: a hand enters play only
+if all its cards keep the future solvable, so any pick from any hand is
+legal by construction. Feasibility of the whole draft is checked once at
+start by the same recursion — deterministic, replacing the 800-try hunt
+and its silent fallback tier. Militant requirement kept, matching the
+current mode.
 
 ### Implementation notes
 
-Fits existing patterns exactly. `usePersistedReducer` state machine
-(`setup → auction → done`), phases mirror `CutChooseMode`. UI: `PlayerStepper`,
-`NameInputs`, `OrderList` for turn order, a big `FactionCard` for the current
-reveal with a bounty stamp, `SummaryList` + `SetupChecklist` + `ReachStampLine`
-at the end. New `ModeId: "bounty"`.
-
-Tuning: 3 tokens per player default. 2 = faster with more forced claims;
-4 = more circulation, better at 5–6 players.
-
-## Riverfolk Auction — IMPLEMENTED
-
-Now live as `src/modes/RiverfolkAuctionMode.tsx` (`ModeId: "auction"`). Sketch
-kept for the rationale and the open tuning questions below.
-
-Every draft's real scarce resource is pick order. Don't randomize it — sell it.
-Players sealed-bid VP for the right to pick first.
-
-### Rules
-
-1. Device passes around once: each player secretly enters a bid, 0–5 VP.
-2. Reveal all bids. Pick order = bid order, highest first, ties broken randomly.
-   Each player starts the game at −(their bid) VP.
-3. Players pick in that order from the full owned pool, with the same
-   `reachBlockReason` filtering as Simple mode, so every partial selection stays
-   completable and the final table is legal.
-
-All-zero bids degrade gracefully: random order, free pick — Simple mode with a
-fair turn order.
-
-### Why fair
-
-Self-handicapping. The player who desperately wants the Eyrie pays for the
-privilege in VP; the player with no preference bids 0 and gets compensated with
-a stronger relative position. Nobody can be exploited: your bid only ever costs
-you what you declared the priority was worth. Thematically on the nose — you're
-paying the Riverfolk Company for services.
-
-### Why legal combinations
-
-Identical to Simple mode: `reachBlockReason` gates every pick, so reach target,
-Vagabond/Knaves exclusion, and Second Vagabond gating all hold by construction.
-The last picker only sees options that complete a legal table. Negative starting
-VP is a house rule (same precedent as Wishlist's +1 VP).
-
-### Implementation notes
-
-Lightest of the three sketches. `usePersistedReducer` machine
-(`setup → bid → pick → done`). Bid phase reuses the pass-the-device pattern from
-Hand draft (show "hand device to X", secret input, confirm). Pick phase is
-Simple mode's grid with a `picker-banner`. Summary shows each player's faction
-plus "starts at −k VP". New `ModeId: "auction"`.
-
-Tuning / open questions:
-- Bid cap 5 VP is a guess; 3 keeps it tame, uncapped is funnier but a 10 VP bid
-  probably ruins that player's game.
-- Vickrey option: winner pays the second-highest bid instead of their own.
-  Reduces overbidding regret, classic auction-theory fix — worth a settings
-  toggle if the mode lands.
-- Could charge every player their bid, or only the players who beat someone.
-  Charging everyone is simpler and keeps bluff-bidding honest.
+Replace `handleDeal`'s shuffle-hunt and the pick-time `legalIds`/`strong`
+filtering in `HandDraftMode.tsx` with a `dealHand(picked, undealt,
+playersLeft)` search in `src/lib/handDraft.ts`; hands append to state as
+they're dealt, so undo and the summary's "passed on" lines work unchanged.
+Randomness: shuffle candidate card order and take the first valid
+K-subset — the space is tiny (C(12,3)=220 subsets, memoized futures).
+Honest tradeoff for the Explainer: hand composition now depends on
+earlier picks, a mild information whiff — no worse than the current
+hidden-card leak it replaces.
 
 ## Exile Draft
 
@@ -247,122 +125,395 @@ Tuning / open questions:
   banning starts; a ban on a protected faction bounces (ban wasted). Adds
   bluffing, costs UI complexity — skip for v1.
 
-## Trading Post — IMPLEMENTED
+## Woodland Roulette
 
-Now live as `src/modes/TradingPostMode.tsx` (`ModeId: "trade"`), algorithm in
-`src/lib/trade.ts`. Top Trading Cycles — the mechanism kidney exchanges and
-dorm-room assignment actually run on (Shapley–Scarf; extended to vacant goods
-by Abdulkadiroğlu & Sönmez).
-
-### Rules
-
-1. Shuffle seats. App deals a random legal lineup (reach ≥ target, A.8.1
-   respected, Second Vagabond excluded) — one secret faction per player. Every
-   other owned faction sits in a market stall.
-2. Device passes around once: each player sees their dealt faction and secretly
-   ranks any factions they'd rather play, best first. Ranking nothing means
-   keeping the deal.
-3. App runs Top Trading Cycles: everyone points at the current holder of their
-   top remaining want; stalls point at players by a shuffled priority order;
-   every cycle found trades and exits. A player-to-stall trade swaps your
-   faction into the market and the stall's out of it.
-4. Reveal replays the cycles ("Anna ⇄ Bob", "Carl takes the Lizard Cult from
-   the stalls; his Vagabond returns to the market"), then the usual summary.
-   Seat 0 is first player, the standing convention.
-
-### Why fair
-
-Individually rational: nobody ever ends worse than their deal, by their own
-ranking. Pure TTC is strategyproof (honest ranking is provably optimal) and
-core-stable (no clique could break off and trade better among themselves).
-The stall extension dents strategyproofness only at the margin where the
-legality gate blocks a trade — the Explainer says so honestly.
-
-### Why legal combinations
-
-The deal starts legal by construction (random choice among legal
-`playerCount`-subsets, enumerated via `combinations` — at most C(13,6)=1716).
-Player-to-player cycles permute the multiset: still legal, zero checks needed.
-Only stall cycles change the multiset (one faction in, one out), and each is
-gated: an illegal resulting multiset blocks that want and the pointer moves
-down the ranking, so the invariant "player multiset legal after every executed
-cycle" holds start to finish. Militant presence isn't enforced, matching
-Wishlist's subset legality (reach + A.8.1 only).
-
-### Implementation notes
-
-`usePersistedReducer` machine (`setup → rank → done`). Rank phase is
-Wishlist's pass-the-device ranking with an unlimited pick count and the dealt
-faction shown privately behind the `PassDeviceGate`. Randomness (seat shuffle,
-deal, stall priority) is injected at START/SUBMIT from the component, keeping
-the reducer pure; `runTrade` itself is deterministic and unit-tested in
-`src/lib/trade.test.ts`. Reveal reuses `.reveal-log`. No house-rule tag:
-nothing touches scoring.
-
-The stalls are a setup toggle (`rootpicker.tradeStallsOpen`, default on). At
-4 players 9 of 12 rankable factions sit in stalls, so ~75% of wishes point at
-one — stall trades dominate and the mode drifts toward "pick a favorite from
-the whole pool, contested by random priority". Stalls closed is pure
-Shapley–Scarf TTC on the dealt lineup: scarcer trades, the deal matters, and
-only the dealt factions are offered for ranking (the lineup — not who holds
-what — becomes open info, like any dealt draft pool).
-
-## Woodland Raffle — IMPLEMENTED
-
-Now live as `src/modes/RaffleMode.tsx` (`ModeId: "raffle"`), draw logic in
-`src/lib/raffle.ts`. Charity-raffle allocation: equal ticket budgets, influence
-proportional to declared want, lottery thrill on the draw.
+The app proposes; the table disposes. Full random lineups spun on the shared
+screen, with a veto escape hatch so nobody is stuck with a faction the table
+can't live with. Zero drafting, near-zero time — the lazy-table mode.
 
 ### Rules
 
-1. Shuffle seats. Device passes around: each player secretly spreads their
-   ticket budget across any factions (Second Vagabond excluded). All-in is
-   greed, spreading is a hedge. Budget defaults to the player count and is
-   adjustable in Settings (1–20).
-2. All tickets go into one urn, shuffled. Tickets are drawn one at a time on
-   the shared screen — a big reveal button, with a fast-forward.
-3. A drawn ticket assigns its faction to its player UNLESS the faction is
-   already claimed, the player is already settled, or the assignment would
-   strand the table below reach — any of those burns the ticket. Burned
-   tickets cost exactly their own urn weight, nothing else. Every win also
-   eagerly burns all tickets that can no longer win (the winner's leftovers,
-   rival tickets on the claimed faction, reach-dead tickets) — sound because
-   claims only ever tighten the reach math, so dead is dead forever. The urn
-   therefore only ever holds live tickets and every later draw is a win.
-4. Urn empty (or everyone settled): unsettled players get a random legal fill.
-   The first player to be random-filled becomes first player — compensation
-   for getting the least preference expression. Everyone ticket-won: seat 0.
+1. Shuffle seats. The app spins a complete lineup: a random legal
+   `playerCount`-subset of the owned pool (reach ≥ target, Vagabond/Knaves
+   exclusion per A.8.1, Second Vagabond excluded), assigned to seats at
+   random, shown all at once in the open.
+2. The table looks at it. Any player may spend a veto to name ONE faction in
+   the proposal — their own or anyone else's. The vetoed faction is exiled
+   for the rest of the session, and the app spins a fresh lineup from the
+   survivors (fresh subset, fresh seat assignment).
+3. Veto budget is 1 token per player, tracked at the table on the honor
+   system — the app deliberately does not track who spent what. Keeps the
+   mode simple and keeps the "are you really burning your veto on that?"
+   conversation where it belongs, between the players.
+4. A veto is blocked (greyed, with a reason) if exiling that faction would
+   leave no legal lineup for the player count — the mirror of Exile Draft's
+   ban validation.
+5. Nobody vetoes → the lineup locks. Seat 0 is first player, the standing
+   convention. Vagabond in the lineup gets a random character card dealt at
+   lock (A.8.2.III), Knaves get their Captain deal, same as other modes.
 
 ### Why fair
 
-Equal budgets, proportional influence: an all-in vs. a split bet is settled
-by the exact ratio of tickets on the line. Not strategyproof — concentration gambling is the point, and the
-Explainer says tickets are lottery entries, not orders. A table that
-collectively all-ins on insurgents spends the slack early and the rest
-random-fill militants; honest behavior, flagged up front.
+Symmetric randomness plus equal escape hatches. Nobody controls what they
+get, only what nobody gets — a veto is a public, costly signal ("this
+faction does not hit our table"), and since it kills the faction rather
+than the seat, vetoing your own bad deal and vetoing a neighbor's nightmare
+matchup are the same move. Versus Exile Draft (the other ban-then-roll
+sketch): Exile bans *proactively* before any roll, with a fixed ban budget
+and math about slack; Roulette vetoes *reactively* against concrete
+proposals, needs no ban-count bookkeeping, and ends the moment the table is
+content — often on spin one. Termination is guaranteed: every veto
+permanently shrinks the pool, and rule 4 stops the shrinking at the last
+legal lineup.
 
 ### Why legal combinations
 
-Every assignment (draw or fill) is gated by `reachBlockReason` against the
-already-claimed set, so the partial table stays completable after every event
-and the final table is legal by induction — the same guard Simple mode runs
-per pick. Vagabond/Knaves exclusion comes free from the same function.
+Every spin is drawn from the enumerated legal subsets of the surviving pool
+(same `combinations` enumeration the Trading Post deal uses — at most
+C(13,6)=1716), so every proposal is legal by construction. The veto guard
+checks that a legal subset still exists among survivors before allowing the
+exile, so the invariant "at least one legal lineup remains" holds start to
+finish. Militant presence isn't enforced, matching Wishlist/Trading Post
+subset legality (reach + A.8.1 only). Fully Law-legal assignment under
+5.1.1 ("assign one faction to each player in any way") with no scoring
+changes — no house-rule tag.
 
 ### Implementation notes
 
-`usePersistedReducer` machine (`setup → tickets → draw → done`). Ticket phase
-follows Wishlist's pass-the-device pattern with tap-to-add-a-ticket cards
-(count shown as the rank badge) and a remove-last control. Urn shuffle, fill
-faction order, and fill seat order are all pre-shuffled in the component when
-the last player submits, so the reducer stays pure and every draw is
-deterministic and unit-testable (`src/lib/raffle.test.ts`). Draw phase renders
-`.reveal-log` lines (won / burned + reason). No house-rule tag: nothing
-touches scoring.
+Lightest mode in the whole app. `usePersistedReducer` machine
+(`setup → spin → done`). Spin phase: one `FactionCard` per seat with the
+player's name, a veto affordance per card (tap → confirm → respin), and a
+running list of exiled factions. Reuses the legal-subset enumeration from
+`src/lib/trade.ts` and `reachBlockReason` for the veto guard. `SummaryList`
++ `SetupChecklist` + `ReachStampLine` at the end. New `ModeId: "roulette"`.
 
 Tuning / open questions:
-- Ticket budget defaults to player count (`rootpicker.raffleTicketCount`
-  override, `null` = auto) and is a Settings stepper, clamped 1–20 — fewer is
-  coarser preference and more random fill, more is finer-grained but slower
-  to draw.
-- Burned tickets are shown live as they're drawn — the drama is the point. If
-  that drags at 6 players, a "draw all" exists.
+- Veto budget "1 per player" is a suggestion printed in the Explainer, not
+  enforced — tables that want a stricter or looser economy just agree on
+  one.
+- Optional toggle: guarantee ≥1 militant faction per spin (A.8.2 deals one
+  militant to the pool by design; the lock-last-insurgent rule shows Law
+  intent). Default off to match the other modes' legality basis.
+- Respin animation: a brief card-shuffle flourish sells the roulette
+  feeling; skippable.
+
+## Secret Santa
+
+You never choose your own faction — your neighbor chooses it for you, in
+secret, kindly or cruelly. Potluck's "never your own" taken personal: the
+gift is aimed at a specific player, so knowing their tastes (or their
+dread) is the whole mechanic.
+
+### Rules
+
+1. Shuffle seats. Device passes around in seat order: each player secretly
+   picks one gift faction for their LEFT neighbor (seat i gifts seat i+1,
+   wrapping) from the full owned pool (Second Vagabond excluded). No
+   gating during the gift phase — full secrecy means collisions are
+   possible, and the reveal drama is the point.
+2. Reveal all gifts at once. Then resolve in seat order: a gift is accepted
+   if it's compatible with the gifts accepted so far — not a duplicate, no
+   Vagabond/Knaves conflict, and the table can still reach the target
+   (`reachBlockReason` against the accepted set). An incompatible gift
+   fails, and its GIVER re-picks openly for their neighbor from the legal
+   survivors.
+3. All gifts resolved → summary, each line noting who gave what to whom.
+   Seat 0 is first player, the standing convention.
+4. Two players is a mutual exchange: you play what they chose for you, they
+   play what you chose for them. Only possible conflict is both gifting the
+   same faction (seat 0's gift stands, seat 1 re-gifts) — the Explainer
+   notes it with a wink, like Potluck's forced swap.
+
+### Why fair
+
+Pure other-directed choice. Potluck already established "you'll never play
+what you bring" as honest preference expression; Santa sharpens it from
+"someone gets this" to "YOU get this", so the choice carries social weight
+in both directions — a kind gift is a favor, a cruel one is a declaration,
+and either way the giver sits next to the consequences all game. Nothing
+here is a house rule: Law 5.1.1 allows any assignment, and seat-priority
+conflict resolution follows the Law's own tiebreak spirit (1.1.3, the
+active player decides unclear resolutions). Resolution order slightly
+favors early seats' *receivers* (their gifts resolve first, so never fail),
+but the advantage circulates — your good position benefits your neighbor,
+not you — so it roughly washes out around the circle.
+
+### Why legal combinations
+
+Legality is enforced entirely at resolution, by induction: each accepted
+gift is checked completable against the accepted set via `reachBlockReason`
+(reach, A.8.1, Second Vagabond all come free), and each failed gift is
+re-picked from options gated the same way, so after every resolution step
+the partial table is still completable and the final table is legal. The
+gift phase itself needs no gating — any single faction is part of some
+legal lineup.
+
+### Implementation notes
+
+`usePersistedReducer` machine (`setup → gift → resolve → done`). Gift phase
+is the pass-the-device pattern from Hand Draft/Wishlist (`PassDeviceGate` +
+faction grid, banner naming the recipient: "Pick a faction for Anna").
+Resolve phase replays gifts as `.reveal-log` lines (accepted / failed +
+reason), pausing on a failure for the giver's open re-pick on a
+Simple-mode-style gated grid. `SummaryList` + `SetupChecklist` +
+`ReachStampLine` at the end. New `ModeId: "santa"`. No house-rule tag:
+nothing touches scoring.
+
+Tuning / open questions:
+- Gift direction: left neighbor is v1 (simple, predictable resolution). A
+  true Secret-Santa variant — random secret derangement of who gifts whom —
+  adds a second layer of secrecy ("who saddled me with the Cult?") for one
+  extra shuffle; worth a toggle later.
+- Thank-you swap: let each receiver, once, publicly swap their gift for an
+  unclaimed legal faction — softens cruelty at the cost of the premise.
+  Skip for v1; revisit if cruel gifting sours real tables.
+
+## Typecast
+
+Casting-director assignment: your faction is decided by how the *table*
+sees you, not how you see yourself. The 360-review of faction pickers —
+Wishlist's optimizer with every preference arrow pointing outward.
+
+### Rules
+
+1. Shuffle seats. Device passes around in seat order: each player secretly
+   nominates one faction **for every other player** ("cast Anna as…"), one
+   grid page per castmate. You never nominate for yourself.
+2. When all ballots are in, the app solves the assignment that maximizes
+   total votes received, searching only legal lineups (reach ≥ target,
+   Vagabond/Knaves exclusion, Second Vagabond excluded) — the same
+   machinery as Wishlist, with the score being "how many castmates saw you
+   this way" instead of "how high you ranked it yourself".
+3. Reveal shows each player's faction with its vote count ("3 of 4 players
+   cast you as the Marquise de Cat") — counts only, never who voted what.
+   Ballots stay anonymous; the reveal-log replays any interesting
+   runner-ups. Ties between equally-good assignments break randomly.
+4. Seat 0 is first player, the standing convention.
+
+### Why fair
+
+Perfectly symmetric: everyone gets the same number of votes to cast (one
+per castmate) and zero say in their own fate. It measures something no
+other mode touches — reputation. Wishlist finds the assignment the players
+want for themselves; Typecast finds the one the table believes in, which at
+a group that knows each other is often funnier and more accurate. Anonymity
+matters: public ballots would turn nominations into negotiation; secret
+ones keep them honest. No scoring changes, no house rule — Law 5.1.1
+assignment, nothing else.
+
+### Why legal combinations
+
+Identical legality basis to Wishlist: the solver only considers legal
+`playerCount`-subsets and assignments (reach + A.8.1 + Second Vagabond),
+so the winning cast is legal by construction. A faction nobody voted for
+can still be assigned when legality demands it (vote total 0 for that
+player — the reveal owns this: "the table couldn't agree, the Woodland
+decided"). Militant presence isn't enforced, matching the Wishlist basis.
+
+### Implementation notes
+
+`usePersistedReducer` machine (`setup → ballot → done`). Ballot phase is
+the pass-the-device pattern with one gated faction grid per castmate
+(banner: "Cast Anna as…"), a small progress dots row for the N−1 pages.
+Solver reuses Wishlist's legal-assignment search with a swapped score
+function; ties randomized at submit in the component so the reducer stays
+pure. Reveal reuses `.reveal-log`; `SummaryList` + `SetupChecklist` +
+`ReachStampLine` at the end. New `ModeId: "typecast"`. No house-rule tag.
+
+Tuning / open questions:
+- One nomination per castmate is v1. Two per castmate (weighted 2/1) gives
+  the solver more signal at bigger tables — worth it if 5–6 player casts
+  feel too constrained by legality overrides.
+- Reveal spice: show each player's full received-vote spread (all factions
+  anyone cast them as), not just the winner. Costs a little layout, pays
+  in table laughter.
+
+## Dutch Flower Auction
+
+Aalsmeer's descending clock: the price starts bad and gets better every
+tick, and the first player to slam the button takes the faction at the
+current number. Hesitation is the bid. The only mode with a real clock.
+
+### Rules
+
+1. Shuffle seats, random first player for the game itself. App builds the
+   reveal deck from the owned pool with the same legality filter as Bounty
+   (a faction is only revealed if claimed-set + it + best remaining can
+   still hit the target).
+2. One faction on screen at a time, with a price ticker: starts at −4 VP,
+   ticks one step toward +4 VP every few seconds. Any unassigned player
+   may tap CLAIM at any moment — first tap takes the faction at the price
+   showing, and that player leaves the auction. Next faction revealed,
+   clock resets.
+3. The clock never assigns by itself: at +4 the ticker stops and holds
+   until someone claims. (With multiple players left, +4 is free money —
+   someone cracks immediately.)
+4. Last remaining player auto-claims the final reveal at +4. That's not a
+   gift, it's the honest equilibrium: a lone bidder with no competition
+   waits out any clock, so the app skips the theater.
+5. Final VP totals are normalized to a 0 floor (lowest becomes 0), Bounty
+   precedent — only the gaps between players matter.
+
+### Why fair
+
+Self-pricing under time pressure. Bounty prices factions by circulating
+passes; Dutch prices them in seconds — a strong faction gets snapped up
+deep in the penalty range, a weak one rides the clock into bonus
+territory. Your nerve is the only currency: claim early and pay for
+certainty, or wait for value and risk the snipe. Everyone faces the same
+clock with the same button. The physical scramble on one shared device is
+a feature, not a bug — Halli Galli nerves, absent from every other mode.
+
+### Why legal combinations
+
+Reveal filter is Bounty's, verbatim: `reachBlockReason` gates entry to the
+reveal deck so the invariant holds after every claim and the final table
+reaches the Law 5.2 total, with Vagabond/Knaves and Second Vagabond
+handled by the same function. The VP prices are a house rule (Bounty/
+Auction precedent) — houseRule tag on.
+
+### Implementation notes
+
+`usePersistedReducer` machine (`setup → clock → done`). The reducer stays
+pure: the component runs the interval timer and dispatches TICK events;
+CLAIM carries the price at tap time, so a test can replay any sequence
+deterministically. UI: one big `FactionCard` with an oversized price dial
+and a full-width CLAIM button (this is a shared-screen slap target, size
+accordingly). Reveal-log lines per claim ("Anna took the Eyrie at −2").
+`SummaryList` + `SetupChecklist` + `ReachStampLine` at the end. New
+`ModeId: "dutch"`. House-rule tag on.
+
+Tuning / open questions:
+- Price range −4…+4 and ~3s per tick are guesses; the full range should
+  feel like ~25 tense seconds, not a minute of waiting. Both belong in
+  Settings.
+- A short frozen preview (2s, button disabled) before the clock starts
+  prevents claim-by-accident on the reveal.
+- Reflex fairness: a table with big reaction-time gaps can switch to
+  tick-pause mode — the clock pauses each step for a beat, and claims
+  during the pause tie-break randomly instead of by tap speed. Costs
+  drama, buys accessibility; Settings toggle, default off.
+
+## Mulligan
+
+Draw poker's opening decision: keep your deal or ship it back — but the
+replacement is blind and binding. One gamble per player, no rankings, no
+trades. Probably the smallest implementable mode in this document.
+
+### Rules
+
+1. Shuffle seats. App deals a random legal lineup (reach ≥ target,
+   Vagabond/Knaves exclusion, Second Vagabond excluded — the Trading Post
+   deal, verbatim), one secret faction per player. Everything undealt sits
+   in a face-down market.
+2. Device passes around once in seat order: look at your faction, then
+   **keep** it or **mulligan** — discard it and draw a blind replacement
+   from the market, which you must keep sight unseen.
+3. The replacement is drawn at random from the market cards that keep the
+   table legal; your discarded faction goes back to the market, barred for
+   you but available to a later mulliganer (yes, you can draw someone
+   else's regret — the reveal loves this).
+4. Mulligan is blocked (with a reason) in the rare state where no legal
+   replacement exists; you keep your deal.
+5. Reveal replays every decision ("Anna kept", "Bob shipped the Lizard
+   Cult back… and drew the Corvids"). Seat 0 is first player, the standing
+   convention.
+
+### Why fair
+
+One identical gamble each, and purely self-regarding: your mulligan never
+touches anyone else's faction, so there is nothing to exploit and no
+kingmaking surface at all. The honesty is in the blindness — Trading Post
+lets you steer where you land, Mulligan only lets you reject where you
+are, which is exactly the poker-table feeling: sometimes the second card
+is worse, and the table gets to enjoy that. No scoring changes, no house
+rule.
+
+### Why legal combinations
+
+The deal starts legal by construction (random legal subset). Each mulligan
+is a single-slot swap gated so the resulting multiset is still legal —
+induction per swap, same basis as everywhere else (reach + A.8.1 + Second
+Vagabond via the standard guard). Rule 4 closes the no-legal-replacement
+edge. Militant presence isn't enforced, matching the Trading Post basis.
+
+### Implementation notes
+
+`usePersistedReducer` machine (`setup → decide → done`). Decide phase is
+one `PassDeviceGate` screen per player: their `FactionCard`, a KEEP and a
+MULLIGAN button, replacement revealed immediately to them (they must know
+what they'll play — it just can't be changed). Deal and replacement
+randomness injected at START/decision time from the component, reducer
+pure and testable. Reveal reuses `.reveal-log`; `SummaryList` +
+`SetupChecklist` + `ReachStampLine` at the end. New `ModeId: "mulligan"`.
+No house-rule tag.
+
+Tuning / open questions:
+- One mulligan is v1. A "double down" variant (second mulligan allowed,
+  but you must keep the third card no matter what) steepens the gamble —
+  Settings toggle later if the single decision feels thin.
+- Whether a mulligan is announced to the table live ("Bob shipped one
+  back!") or only in the reveal. Live is funnier; secret is cleaner
+  poker. Default live.
+
+## Omakase
+
+Chef's choice: you don't order a faction, you tell the kitchen your mood
+and trust the chef. The only mode that works for players who don't know
+the factions at all — you can't rank what you've never played, but you
+can always say what you're hungry for.
+
+### Rules
+
+1. Shuffle seats. Device passes around: each player secretly sets two or
+   three appetite sliders for tonight — **aggression** (pick fights vs
+   avoid them), **footprint** (build and spread vs lurk and poke), and
+   **complexity** (easy evening vs give me homework).
+2. The app scores every faction against every player's order using
+   per-faction archetype ratings, and deals the best-fitting legal lineup
+   (reach ≥ target, Vagabond/Knaves exclusion, Second Vagabond excluded) —
+   Wishlist's solver with the score computed from sliders instead of
+   hand-ranked lists.
+3. Reveal serves each plate with a one-line justification ("you asked for
+   aggressive and simple: Lord of the Hundreds"). When legality forced a
+   compromise, the line owns it ("the kitchen was out of sneaky —
+   tonight you build"). Seat 0 is first player, the standing convention.
+
+### Why fair
+
+Symmetric and expertise-free. Wishlist, Typecast, and every draft reward
+knowing the roster; Omakase asks only self-knowledge, which every player
+has on day one — it's Teaching Tiers' audience with preference instead of
+prescription. Nobody competes for a specific faction, so there's nothing
+to game except lying about your own mood, which only ruins your own
+dinner. No scoring changes, no house rule.
+
+### Why legal combinations
+
+Identical basis to Wishlist/Typecast: the solver searches only legal
+lineups, so the served table is legal by construction, and slider fit is
+sacrificed before legality ever is. Militant presence isn't enforced,
+matching that basis.
+
+### Implementation notes
+
+`usePersistedReducer` machine (`setup → order → done`). Order phase is the
+pass-the-device pattern with two or three big sliders and plain-language
+end labels — no faction names anywhere in the phase, that's the point.
+Solver reuses Wishlist's legal-assignment search with a
+slider-distance score. **Data cost, the only one in this document:** each
+faction needs aggression and footprint ratings added to
+`src/data/factions.ts` (complexity already exists as `difficulty`, used
+by Teaching Tiers). One-time authoring, a judgment call worth a source
+comment per rating. Reveal reuses `.reveal-log` for the justification
+lines; `SummaryList` + `SetupChecklist` + `ReachStampLine` at the end.
+New `ModeId: "omakase"`. No house-rule tag.
+
+Tuning / open questions:
+- Two sliders or three: aggression + complexity may be enough signal;
+  footprint earns its place only if the ratings genuinely spread the
+  roster. Decide when authoring the data.
+- Justification lines want hand-written fragments per rating band, not
+  generated prose — small static table, big flavor payoff.
+- "Chef's surprise" toggle: one volunteer skips the sliders entirely and
+  takes whatever balances the meal. Pure flavor, nearly free.

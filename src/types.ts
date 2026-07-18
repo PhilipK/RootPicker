@@ -29,6 +29,7 @@ export type ModeId =
   | "trade"
   | "raffle"
   | "roulette"
+  | "exile"
   | "settings";
 
 export type Tier = "new" | "comfortable" | "expert";

@@ -19,6 +19,7 @@ const MODE_IDS: ModeId[] = [
   "trade",
   "raffle",
   "roulette",
+  "exile",
   "settings",
 ];
 

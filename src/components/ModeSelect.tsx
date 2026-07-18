@@ -177,6 +177,18 @@ function RouletteIcon() {
   );
 }
 
+function ExileIcon() {
+  // a struck-through circle (banned) with an arrow casting it out of the pool
+  return (
+    <svg {...strokeProps}>
+      <circle cx="9" cy="12" r="5.4" />
+      <path d="M5.4 8.4l7.2 7.2" />
+      <path d="M14.5 12h6" />
+      <path d="M17.7 9l2.8 3-2.8 3" />
+    </svg>
+  );
+}
+
 function GearIcon() {
   return (
     <svg {...strokeProps}>
@@ -293,6 +305,13 @@ export const GAME_MODES: ModeMeta[] = [
     icon: <RouletteIcon />,
     desc: "The app spins a fully random legal lineup; anyone can veto one faction to exile it and force a re-spin.",
     best: "groups who trust the wheel more than each other's opinions, with one shared escape hatch",
+  },
+  {
+    id: "exile",
+    label: "Exile Draft",
+    icon: <ExileIcon />,
+    desc: "Nobody picks — everyone bans down the shared pool in turn, then the app deals a random legal lineup from what survives.",
+    best: "tables who trust the dice more than each other's picks",
   },
 ];
 

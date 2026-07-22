@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      injectRegister: "auto",
+      injectRegister: null,
       manifest: {
         name: "Root Faction Picker",
         short_name: "RootPicker",
